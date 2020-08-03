@@ -4,7 +4,7 @@ QT       += core network
 
 QT       -= gui
 
-TARGET = _rccars_DIALOGCommunicationControlServer
+TARGET = DIALOGTestProcess
 CONFIG   += console
 CONFIG   -= app_bundle
 

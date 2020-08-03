@@ -1,2 +1,3 @@
 build/*
 tests/build/*
+tests/scripts/__pycache__/*

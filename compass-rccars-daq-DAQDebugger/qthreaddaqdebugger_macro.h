@@ -1,0 +1,1 @@
+#define QThread QThreadDAQDebugger

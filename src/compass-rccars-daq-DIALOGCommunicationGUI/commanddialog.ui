@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>CommandDialog</class>
+ <widget class="QWidget" name="CommandDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>789</width>
+    <height>436</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <widget class="QListWidget" name="commandList">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>31</y>
+     <width>256</width>
+     <height>171</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QLabel" name="commandListLabel">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>10</y>
+     <width>258</width>
+     <height>17</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Commands:</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="commandMessageLabel">
+   <property name="geometry">
+    <rect>
+     <x>280</x>
+     <y>10</y>
+     <width>150</width>
+     <height>17</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Command message:</string>
+   </property>
+  </widget>
+  <widget class="QPlainTextEdit" name="commandMessage">
+   <property name="geometry">
+    <rect>
+     <x>280</x>
+     <y>31</y>
+     <width>501</width>
+     <height>134</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="sendCommandButton">
+   <property name="geometry">
+    <rect>
+     <x>660</x>
+     <y>175</y>
+     <width>121</width>
+     <height>27</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Send command</string>
+   </property>
+  </widget>
+  <widget class="QPlainTextEdit" name="commandOutput">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>230</y>
+     <width>771</width>
+     <height>161</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QCheckBox" name="receiverAllCommands">
+   <property name="geometry">
+    <rect>
+     <x>493</x>
+     <y>210</y>
+     <width>288</width>
+     <height>22</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>See received messages of all commands</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="commandOutputLabel">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>210</y>
+     <width>400</width>
+     <height>17</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Received messages:</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="stopListeningButton">
+   <property name="geometry">
+    <rect>
+     <x>671</x>
+     <y>401</y>
+     <width>110</width>
+     <height>27</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Stop listening</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="startListeningButton">
+   <property name="geometry">
+    <rect>
+     <x>551</x>
+     <y>401</y>
+     <width>110</width>
+     <height>27</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Start listening</string>
+   </property>
+  </widget>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

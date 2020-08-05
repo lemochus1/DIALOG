@@ -1,8 +1,5 @@
 QT -= gui
-
-QT       += core network
-
-QT       -= gui
+QT += core network xml
 
 TARGET = DIALOGTestProcess
 CONFIG   += console
@@ -21,6 +18,13 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 SOURCES += \
         main.cpp \
+    testcommandhandler.cpp \
+    testcommandsender.cpp \
+    testprocedurecallcontroller.cpp \
+    testprocedurehandler.cpp \
+    testprocesscontroller.cpp \
+    testserviceprovider.cpp \
+    testservicesubscriber.cpp
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
@@ -49,8 +53,10 @@ INCLUDEPATH += $$PWD/../../src/compass-rccars-daq-DIALOGCommunication
 DEPENDPATH += $$PWD/../../src/compass-rccars-daq-DIALOGCommunication
 
 HEADERS += \
-
-DISTFILES += \
-    main.py \
-    test.py
-
+    testcommandhandler.h \
+    testcommandsender.h \
+    testprocedurecallcontroller.h \
+    testprocedurehandler.h \
+    testprocesscontroller.h \
+    testserviceprovider.h \
+    testservicesubscriber.h

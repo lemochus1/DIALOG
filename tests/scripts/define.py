@@ -14,3 +14,8 @@ DIALOG_BINARIES_NAMES = ["libDIALOGCommunication.so",
                          "libDIALOGCommunication.so.1.0",
                          "libDIALOGCommunication.so.1.0.0"]
 
+TERMINAL_WIDTH = 65 # lines
+TERMINAL_HEIGHT = 18 # lines
+LINE_HEIGHT = 25
+LINE_WIDTH = 10
+TERMINALS_ON_LINE = 3

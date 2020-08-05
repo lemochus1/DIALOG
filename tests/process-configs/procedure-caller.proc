@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<process name="procedure-handler">
+    <control-server address="127.0.0.1" port="8081"/>
+    <send repeat="5" duration="1">
+        <procedure>Procedure</procedure>
+    </send>
+</process>

@@ -24,6 +24,8 @@ public:
 
     void start(QThread::Priority priority = QThread::NormalPriority);
     void setControlServerAdress(QString url, int port);
+
+    QString getName() const;
     
     void registerCommand(DIALOGCommand* command);
     DIALOGCommand* registerCommand(QString name);
@@ -163,7 +165,7 @@ public:
     virtual ~DIALOGServiceSubscriber() {}
 
 public Q_SLOTS:
-    void dataUpdatedSlot(QByteArray dataInit);
+    virtual void dataUpdatedSlot(QByteArray dataInit);
 //    void sendDirectCommand(QString name);
 
 Q_SIGNALS:
@@ -197,13 +199,14 @@ class DIALOGProcedureCaller : public QObject
     QString name;
     QMutex mutex;
     QByteArray data;
-    bool dateSet  = false;
+    bool dataSet  = false;
 
 public:
     explicit DIALOGProcedureCaller(QString nameInit, QObject* parent=nullptr): QObject(parent) {name = nameInit;}
     virtual ~DIALOGProcedureCaller() {}
 
-    QByteArray waitForData(int msTimeout=10000);
+    QByteArray waitForData(bool &ok, int timeout=10);
+
     QByteArray tryGetData();
 
     QString  getName() const;

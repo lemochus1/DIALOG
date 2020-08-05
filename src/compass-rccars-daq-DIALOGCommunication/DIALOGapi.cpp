@@ -32,6 +32,11 @@ void DIALOGProcess::setControlServerAdress(QString url, int port)
     controlServerPort = port;
 }
 
+QString DIALOGProcess::getName() const
+{
+    return name;
+}
+
 void DIALOGProcess::registerCommand(DIALOGCommand *command)
 {
     receiver->registerCommand(command);
@@ -129,9 +134,8 @@ DIALOGProcess::SenderThread::~SenderThread()
 void DIALOGProcess::SenderThread::run()
 {
     server->connectToControlServerSlot();
-    qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Connect";
-    QThread::msleep(2000);
-    qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Sleep";
+
+    QThread::msleep(2000); ///provizore fix
 
     for (const auto name : commandsToRegister) {
         server->registerCommandSlot(name);
@@ -162,7 +166,6 @@ void DIALOGProcess::SenderThread::addServiceToRequest(QString name)
 
 void DIALOGProcess::SenderThread::addServiceToRegister(DIALOGServicePublisher *publisher)
 {
-
     connect(publisher, &DIALOGServicePublisher::dataUpdatedSignal, this, &SenderThread::sendServiceSlot);
     servicesToRegister.append(publisher->getName());
 }
@@ -198,7 +201,6 @@ void DIALOGProcess::SenderThread::sendServiceSlot(QString name, QByteArray messa
 {
     QByteArray* serviceMessage = new QByteArray();
     serviceMessage->append(message);
-
     emit sendServiceMessageSignal(name, serviceMessage);
 }
 
@@ -206,7 +208,6 @@ void DIALOGProcess::SenderThread::callProcedureSlot(QString name, QByteArray mes
 {
     QByteArray* serviceMessage = new QByteArray();
     serviceMessage->append(message);
-
     emit sendProcedureCallMessageSignal(name, serviceMessage);
 }
 
@@ -214,7 +215,6 @@ void DIALOGProcess::SenderThread::sendProcedureReturnSlot(QString name, QByteArr
 {
     QByteArray* serviceMessage = new QByteArray();
     serviceMessage->append(data);
-    std::cout<<"Fakt nevim"<<serviceMessage->toStdString()<<std::endl;
     emit sendProcedureReturnMessageSignal(name,serviceMessage,url,port);
 }
 
@@ -247,10 +247,7 @@ void DIALOGProcess::ReceiverThread::registerService(DIALOGServiceSubscriber *sub
 
 void DIALOGProcess::ReceiverThread::registerProcedureCaller(DIALOGProcedureCaller *caller)
 {
-    if (!procedureCalls.contains(caller->getName())) {
-        procedureCalls[caller->getName()] = caller;
-    }
-
+    procedureCalls[caller->getName()] = caller;
 }
 
 void DIALOGProcess::ReceiverThread::registerProcedureHandler(DIALOGProcedureHandler *handler)
@@ -278,12 +275,11 @@ void DIALOGProcess::ReceiverThread::messageReceivedSlot(QString senderName, quin
     if(headerList[0] == COMMAND_MESSAGE)
     {
         QString command = headerList[1];
-//        if (command == DIRECT){
-//            command = headerList[3];
-//        }
-
         if (commands.contains(command)) {
-            commands[command]->commandReceivedSlot(*message);
+
+            QMetaObject::invokeMethod(commands[command], "commandReceivedSlot",
+                                      Q_ARG( QByteArray, *message ) );
+ //           commands[command]->commandReceivedSlot(*message);
         }
         else {
             std::cerr << "Unknown command arrived." << std::endl;
@@ -293,7 +289,10 @@ void DIALOGProcess::ReceiverThread::messageReceivedSlot(QString senderName, quin
     {
         QString service = headerList[1];
         if(subscribers.contains(service)){
-            subscribers[service]->dataUpdatedSlot(*message);
+            //subscribers[service]->dataUpdatedSlot(*message);
+
+            QMetaObject::invokeMethod(subscribers[service], "dataUpdatedSlot",
+                                      Q_ARG( QByteArray, *message ) );
         }
         else {
             std::cerr << "Unknown service arrived." << std::endl;
@@ -304,7 +303,9 @@ void DIALOGProcess::ReceiverThread::messageReceivedSlot(QString senderName, quin
         if (headerList[1] == PROCEDURE_CALL){
             QString procedure = headerList[2];
             if(procedureHandlers.contains(procedure)){
-                procedureHandlers[procedure]->callRequestedSlot(*message, headerList[3], headerList[4].toInt());
+                //procedureHandlers[procedure]->callRequestedSlot(*message, headerList[3], headerList[4].toInt());
+                QMetaObject::invokeMethod(procedureHandlers[procedure], "callRequestedSlot",
+                                          Q_ARG( QByteArray, *message ), Q_ARG( QString, headerList[3] ), Q_ARG( int, headerList[4].toInt() ) );
             }
             else {
                 std::cerr << "Unknown procedure call arrived." << std::endl;
@@ -314,7 +315,9 @@ void DIALOGProcess::ReceiverThread::messageReceivedSlot(QString senderName, quin
             QString procedure = headerList[2];
 
             if(procedureCalls.contains(procedure)){
-                procedureCalls[procedure]->setDataSlot(*message);//bude cekat??
+                //procedureCalls[procedure]->setDataSlot(*message);//bude cekat??
+                QMetaObject::invokeMethod(procedureCalls[procedure], "setDataSlot",
+                                          Q_ARG( QByteArray, *message ) );
             }
             else {
                 std::cerr << "Unknown procedure data arrived." << std::endl;
@@ -323,7 +326,6 @@ void DIALOGProcess::ReceiverThread::messageReceivedSlot(QString senderName, quin
         else {
             std::cerr << "Unknown procedure message arrived." << std::endl;
         }
-
     }
     delete header;
     delete message;
@@ -343,12 +345,13 @@ void DIALOGServicePublisher::updateDataSlot(QByteArray dataInit)
 void DIALOGServiceSubscriber::dataUpdatedSlot(QByteArray dataInit)
 {
     data = dataInit;
+    qDebug() << QString(dataInit);
     emit dataUpdatedSignal(dataInit);
 }
 
-QByteArray DIALOGProcedureCaller::waitForData(int msTimeout)
+QByteArray DIALOGProcedureCaller::waitForData(bool &ok, int timeout)
 {
-    if(dateSet) {
+    if(dataSet) {
         return tryGetData();
     }
 
@@ -357,8 +360,9 @@ QByteArray DIALOGProcedureCaller::waitForData(int msTimeout)
     QEventLoop loop;
     connect(this, &DIALOGProcedureCaller::dataSetSignal, &loop, &QEventLoop::quit );
     connect(&timer, &QTimer::timeout, &loop, &QEventLoop::quit );
-    timer.start(msTimeout);
+    timer.start(timeout * 1000);
     loop.exec();
+    ok = dataSet;
     return data;
 }
 
@@ -380,8 +384,8 @@ void DIALOGProcedureCaller::setDataSlot(QByteArray dataInit)
 {
     mutex.lock();
     data = dataInit;
+    dataSet = true;
     mutex.unlock();
-    std::cout<< dataInit.toStdString()<<std::endl;
     emit dataSetSignal();
 }
 

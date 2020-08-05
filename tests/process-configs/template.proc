@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<process name="command-handler" address="" port="">
+    <control-server address="127.0.0.1" port="8081"/>
+    <register>
+        <command>Name</command>
+        <service duration="1">Name</service>
+        <procedure duration="1">Name</procedure>
+    </register>
+    <require>
+        <service>Name</service>
+    </require>
+    <send repeat="5" duration="1">
+        <procedure>Name</procedure>
+        <command>Name</command>
+        <direct-command address="" port="">Name</direct-command>
+        <direct-command process="">Name</direct-command>
+    </send>
+</process>

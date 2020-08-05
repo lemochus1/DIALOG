@@ -6,11 +6,21 @@ import signal
 
 from define import *
 
+opened_terminals = 0
+
+
+def getNextTerminalGeometry():
+    global opened_terminals
+    horizonal_drift = (opened_terminals % TERMINALS_ON_LINE) * TERMINAL_WIDTH * LINE_WIDTH
+    vertical_drift = (opened_terminals // TERMINALS_ON_LINE) * TERMINAL_HEIGHT * LINE_HEIGHT
+    opened_terminals += 1
+    return str(TERMINAL_WIDTH) + 'x' + str(TERMINAL_HEIGHT) + '+' + str(int(horizonal_drift)) + '+' + str(int(vertical_drift))
+
+
 def runProcessNewTerminal(executable_path, arguments = None):
-    args = ['gnome-terminal', '--', executable_path]
+    args = ['gnome-terminal', '--geometry=' + getNextTerminalGeometry(), '--', executable_path]
 
     if arguments is not None:
-        args.append('--')
         if isinstance(arguments, list):
             args.extend(arguments)
         else:
@@ -21,17 +31,22 @@ def runProcessNewTerminal(executable_path, arguments = None):
 def runControlServer(executable_path = None):
     if executable_path is None:
         executable_path = CONTROL_SERVER_PATH
-
     runProcessNewTerminal(executable_path)
 
 
-def runTestProcess(config_filename, executable_path = None):
+def runTestProcess(config_filename, arguments = None, executable_path = None):
+    config_path = TEST_CONFIGS_FOLDER + config_filename
+
     if executable_path is None:
         executable_path = TEST_PROCESS_PATH
-
-    cofig_path = TEST_CONFIGS_FOLDER + config_filename
-
-    runProcessNewTerminal(executable_path, cofig_path)
+    if arguments is None:
+        runProcessNewTerminal(executable_path, config_path)
+    else:
+        if isinstance(arguments, list):
+            arguments.insert(0, config_path)
+        else:
+            arguments = [config_path, arguments]
+        runProcessNewTerminal(executable_path, arguments)
 
 
 def moveDialogToSharedDirectory(binaries_names = None, build_directory = None, shared_directory = None):
@@ -59,7 +74,11 @@ def testsSetup(run_control_server = True):
 
 
 def getProcessPid(processName):
-    return list(map(int, subprocess.check_output(["pidof", processName]).split()))
+    try:
+        pidlist = list(map(int, subprocess.check_output(["pidof", processName]).split()))
+    except:
+        pidlist = []
+    return pidlist
 
 
 def killProcessPid(pid):
@@ -80,4 +99,3 @@ def killAllTestProcesses():
     test_process_pids = getProcessPid(TEST_PROCESS_NAME)
     for pid in test_process_pids:
         killProcessPid(pid)
-

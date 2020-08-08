@@ -9,7 +9,7 @@ QT       += core network
 
 QT       -= gui
 
-TARGET = DIALOGCommunicationControlServer
+TARGET = DIALOGCommunicationTestControlServer
 CONFIG   += console
 CONFIG   -= app_bundle
 #INCLUDEPATH += ../compass-rccars-daq-DIALOGCommunication
@@ -36,15 +36,15 @@ TEMPLATE = app
 
 SOURCES += main.cpp
 
-win32:CONFIG(release, debug|release): LIBS += -L$$PWD/../../build/DAQDebugger/release/ -lDAQDebugger
-else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/../../build/DAQDebugger/debug/ -lDAQDebugger
+win32:CONFIG(release, debug|release): LIBS += -L$$PWD/../../build/build-DAQDebugger/release/ -lDAQDebugger
+else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/../../build/build-DAQDebugger/debug/ -lDAQDebugger
 else:unix: LIBS += -L$$PWD/../../build/DAQDebugger/ -lDAQDebugger
 
 INCLUDEPATH += $$PWD/../../build/DAQDebugger
 DEPENDPATH += $$PWD/../../build/DAQDebugger
 
-INCLUDEPATH += $$PWD/../compass-rccars-daq-DAQDebugger
-DEPENDPATH += $$PWD/../compass-rccars-daq-DAQDebugger
+INCLUDEPATH += $$PWD/../../src/compass-rccars-daq-DAQDebugger
+DEPENDPATH += $$PWD/../../src/compass-rccars-daq-DAQDebugger
 
 
 win32:CONFIG(release, debug|release): LIBS += -L$$PWD/../../build/DIALOGCommunication/release/ -lDIALOGCommunication
@@ -54,5 +54,5 @@ else:unix: LIBS += -L$$PWD/../../build/DIALOGCommunication/ -lDIALOGCommunicatio
 INCLUDEPATH += $$PWD/../../build/DIALOGCommunication
 DEPENDPATH += $$PWD/../../build/DIALOGCommunication
 
-INCLUDEPATH += $$PWD/../compass-rccars-daq-DIALOGCommunication
-DEPENDPATH += $$PWD/../compass-rccars-daq-DIALOGCommunication
+INCLUDEPATH += $$PWD/../../src/compass-rccars-daq-DIALOGCommunication
+DEPENDPATH += $$PWD/../../src/compass-rccars-daq-DIALOGCommunication

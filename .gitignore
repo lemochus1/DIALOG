@@ -1,3 +1,5 @@
 build/*
 tests/build/*
 tests/scripts/__pycache__/*
+tests/scripts/utils/__pycache__/*
+*.pyc

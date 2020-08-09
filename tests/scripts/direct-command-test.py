@@ -1,16 +1,15 @@
 import time
 import sys
 
-from utils.process import *
-from utils.build import *
+from utils.runner import TestRunner
 
-log_file = str(sys.argv[0]).replace(".py",".log")
+runner = TestRunner()
 
-testsSetup()
+runner.setup()
+time.sleep(2)
+runner.startTestProcess("command-handler")
+runner.startTestProcess("command-handler", tokens="command-handler|command-handler2")
 time.sleep(1)
-
-runTestProcess("command-handler.proc", log_file)
-runTestProcess("command-handler.proc", [log_file, "command-handler|command-handler2"])
-time.sleep(1)
-
-runTestProcess("direct-command-sender.proc", log_file)
+runner.startTestProcess("direct-command-sender")
+runner.waitWhileTesting(10)
+runner.cleanup()

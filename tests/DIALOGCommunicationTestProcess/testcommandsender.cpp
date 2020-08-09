@@ -39,7 +39,7 @@ void TESTCommandSender::sendCommand()
 {
     mutex.lock();
     QByteArray message;
-    message.append(processName + "_" + commandName + "_" + QString::number(sendCounter));
+    message.append(QString::number(sendCounter));
     if (sendCounter == repeat) {
         timer->stop();
     } else {
@@ -49,14 +49,13 @@ void TESTCommandSender::sendCommand()
 
     if (toAddress) {
         process->sendDirectCommandSlot(commandName, message, address, port);
-        //muze byt klasicky cout...
-        //qDebug() << "Send: " << QString(message) << " to " << address << "|" << port;
+        std::cout << "Send command: " << commandName.toStdString() << " - " << QString(message).toStdString() << " to " << address.toStdString() << "|" << port << std::endl;
     } else if (toName) {
         process->sendDirectCommandSlot(commandName, message, targetProcessName);
-        //qDebug() << "Send: " << QString(message) << " to " << targetProcessName;
+        std::cout << "Send command: " << commandName.toStdString() << " - " << QString(message).toStdString() << std::endl;
     } else {
         process->sendCommandSlot(commandName, message);
-        //qDebug() << "Send: " << QString(message) << " to all providers";
+        std::cout << "Send command: " << commandName.toStdString() << " - " << QString(message).toStdString() << std::endl;
     }
     APIMessageLogger::getInstance().logCommandSent(commandName, message);
 }

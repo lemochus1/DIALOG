@@ -9,7 +9,6 @@ TESTCommandHandler::TESTCommandHandler(QString name)
 
 void TESTCommandHandler::commandReceivedSlot(QByteArray message)
 {
-    std::cout << "Received" << QString(message).toStdString() <<std::endl;
-//    qDebug() << "Recieved:" << QString(message);
+    std::cout << "Received command: " << getName().toStdString() <<" - "<< QString(message).toStdString() << std::endl;
     APIMessageLogger::getInstance().logCommandReceived(getName(), message);
 }

@@ -1,15 +1,14 @@
 import time
 
-from utils.build import *
-from utils.process import *
+from utils.runner import TestRunner
 
-testsSetup()
+runner = TestRunner()
+
+runner.setup()
+time.sleep(2)
+runner.startTestProcess("service-subscriber")
+runner.startTestProcess("service-provider")
 time.sleep(1)
-
-runTestProcess("service-subscriber.proc")
-time.sleep(1)
-
-runTestProcess("service-provider.proc")
-time.sleep(1)
-
-runTestProcess("service-subscriber.proc")
+runner.startTestProcess("service-subscriber")
+runner.waitWhileTesting(10)
+runner.cleanup()

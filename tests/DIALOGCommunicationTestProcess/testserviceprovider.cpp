@@ -20,9 +20,10 @@ void TESTServicePublisher::updateData()
 {
     mutex.lock();
     QByteArray message;
-    message.append(processName + "_" + getName() + "_" + QString::number(updateCounter));
+    message.append(QString::number(updateCounter));
     updateCounter++;
     mutex.unlock();
     updateDataSlot(message);
+    std::cout << "Send service data update: " << getName().toStdString() << " - " << message.toStdString() << std::endl;
     APIMessageLogger::getInstance().logServiceDataSent(getName(), message);
 }

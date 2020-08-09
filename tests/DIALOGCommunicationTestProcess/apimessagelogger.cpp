@@ -19,67 +19,88 @@ APIMessageLogger &APIMessageLogger::getInstance()
     return instance;
 }
 
+void APIMessageLogger::setLogFile(const QString &file)
+{
+    logFile = file;
+}
+
 void APIMessageLogger::logCommandRegistered(const QString &name, const QString &message)
 {
-    qDebug() << composeLogMessage(REGISTERED, COMMAND, name, message);
+printMessage(composeLogMessage(REGISTERED, COMMAND, name, message));
 }
 
 void APIMessageLogger::logServiceRegistered(const QString &name, const QString &message)
 {
-    qDebug() << composeLogMessage(REGISTERED, SERVICE, name, message);
+printMessage(composeLogMessage(REGISTERED, SERVICE, name, message));
 }
 
 void APIMessageLogger::logProcedureRegistered(const QString &name, const QString &message)
 {
-    qDebug() << composeLogMessage(REGISTERED, PROCEDURE, name, message);
+printMessage(composeLogMessage(REGISTERED, PROCEDURE, name, message));
 }
 
 void APIMessageLogger::logCommandSent(const QString &name, const QString &message)
 {
-    qDebug() << composeLogMessage(SENT, COMMAND, name, message);
+printMessage(composeLogMessage(SENT, COMMAND, name, message));
 }
 
 void APIMessageLogger::logProcedureCallSent(const QString &name, const QString &message)
 {
-    qDebug() << composeLogMessage(SENT, PROCEDURE_CALL, name, message);
+printMessage(composeLogMessage(SENT, PROCEDURE_CALL, name, message));
 }
 
 void APIMessageLogger::logServiceRequested(const QString &name, const QString &message)
 {
-    qDebug() << composeLogMessage(REQUESTED, SERVICE, name, message);
+printMessage(composeLogMessage(REQUESTED, SERVICE, name, message));
 }
 
 void APIMessageLogger::logServiceDataSent(const QString &name, const QString &message)
 {
-    qDebug() << composeLogMessage(SENT, SERVICE_DATA, name, message);
+printMessage(composeLogMessage(SENT, SERVICE_DATA, name, message));
 }
 
 void APIMessageLogger::logProcedureDataSent(const QString &name, const QString &message)
 {
-    qDebug() << composeLogMessage(SENT, PROCEDURE_DATA, name, message);
+printMessage(composeLogMessage(SENT, PROCEDURE_DATA, name, message));
 }
 
 void APIMessageLogger::logCommandReceived(const QString &name, const QString &message)
 {
-    qDebug() << composeLogMessage(RECEIVED, COMMAND, name, message);
+printMessage(composeLogMessage(RECEIVED, COMMAND, name, message));
 }
 
 void APIMessageLogger::logServiceDataReceived(const QString &name, const QString &message)
 {
-    qDebug() << composeLogMessage(RECEIVED, SERVICE_DATA, name, message);
+printMessage(composeLogMessage(RECEIVED, SERVICE_DATA, name, message));
 }
 
 void APIMessageLogger::logProcedureDataReceived(const QString &name, const QString &message)
 {
-    qDebug() << composeLogMessage(RECEIVED, PROCEDURE_DATA, name, message);
+printMessage(composeLogMessage(RECEIVED, PROCEDURE_DATA, name, message));
 }
 
 void APIMessageLogger::logProcedureCallReceived(const QString &name, const QString &message)
 {
-    qDebug() << composeLogMessage(RECEIVED, PROCEDURE_CALL, name, message);
+printMessage(composeLogMessage(RECEIVED, PROCEDURE_CALL, name, message));
 }
 
-APIMessageLogger::APIMessageLogger(){}
+APIMessageLogger::APIMessageLogger()
+    : logFile("")
+{
+
+}
+
+void APIMessageLogger::printMessage(const QString &message)
+{
+    if (logFile.isEmpty()) {
+        qDebug() << message;
+    } else {
+        QFile outFile(logFile);
+        outFile.open(QIODevice::WriteOnly | QIODevice::Append);
+        QTextStream ts(&outFile);
+        ts << message << endl;
+    }
+}
 
 QString APIMessageLogger::composeLogMessage(const QString &action, const QString &type, const QString &name, const QString &message)
 {
@@ -88,7 +109,7 @@ QString APIMessageLogger::composeLogMessage(const QString &action, const QString
 
 QString APIMessageLogger::getDateTimeString()
 {
-    return QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss");
+    return "\"" + QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") + "\"";
 }
 
 QString APIMessageLogger::createStartElement(const QString &type, const QString &name)

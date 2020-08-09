@@ -4,12 +4,16 @@
 #include <QObject>
 #include <QDebug>
 #include <QDateTime>
+#include <QFile>
+
 
 class APIMessageLogger
 {
 
 public:
     static APIMessageLogger &getInstance();
+
+    void setLogFile(const QString& file);
 
     void logCommandRegistered(const QString& name, const QString& message);
     void logServiceRegistered(const QString& name, const QString& message);
@@ -38,12 +42,16 @@ public:
     void operator=(APIMessageLogger const&) = delete;
 
 private:
+    void printMessage(const QString& message);
+
     QString composeLogMessage(const QString& action, const QString& type, const QString& name, const QString &message="");
 
     QString getDateTimeString();
     QString createStartElement(const QString& type, const QString& name="");
     QString createEndElement(const QString& type);
     QString createElement(const QString& type, const QString message, const QString& name="");
+
+    QString logFile;
 };
 
 #endif // TESTAPIMESSAGELOGGER_H

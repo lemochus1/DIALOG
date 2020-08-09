@@ -14,8 +14,16 @@ DIALOG_BINARIES_NAMES = ["libDIALOGCommunication.so",
                          "libDIALOGCommunication.so.1.0",
                          "libDIALOGCommunication.so.1.0.0"]
 
-TERMINAL_WIDTH = 65 # lines
-TERMINAL_HEIGHT = 18 # lines
-LINE_HEIGHT = 25
-LINE_WIDTH = 10
-TERMINALS_ON_LINE = 3
+API_TAG = "api"
+SENT_TAG = "sent"
+RECEIVED_TAG = "received"
+REQUESTED_TAG = "requested"
+REGISTRED_TAG = "registered"
+
+CONFIG_SUFFIX = ".proc"
+LOG_SUFFIX = ".log"
+SCRIPT_SUFFIX = ".py"
+
+TERMINAL_SEPARATOR = "-----------------------------------------"
+LOG_SEPARATOR = TERMINAL_SEPARATOR + TERMINAL_SEPARATOR + "\n"
+TOKEN_VALUE_SEPARATOR = "|"

@@ -1,13 +1,14 @@
 import time
 
-from utils.build import *
-from utils.process import *
+from utils.runner import TestRunner
 
+runner = TestRunner()
 
-testsSetup()
+runner.setup()
+time.sleep(2)
+runner.startTestProcess("procedure-handler")
 time.sleep(1)
+runner.startTestProcess("procedure-caller")
+runner.waitWhileTesting(6)
+runner.cleanup()
 
-runTestProcess("procedure-handler.proc")
-time.sleep(1)
-
-runTestProcess("procedure-caller.proc")

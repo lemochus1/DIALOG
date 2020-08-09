@@ -20,20 +20,19 @@ void TESTProcedureCallController::start()
 void TESTProcedureCallController::callProcedure()
 {
     QByteArray message;
-    message.append(process->getName() + "_" + name + "_" + QString::number(callCounter));
+    message.append(QString::number(callCounter));
 
     DIALOGProcedureCaller* caller = process->callProcedure(name, message);
     APIMessageLogger::getInstance().logProcedureCallSent(name, message);
-//    qDebug() << "Called: " << QString(message);
-//    qDebug() << "Continuing...";
+    std::cout << "Called procedure: " << name.toStdString() << std::endl;
     bool ok = false;
     QByteArray data = caller->waitForData(ok);
     if (ok) {
         APIMessageLogger::getInstance().logProcedureDataReceived(name, message);
-//        qDebug() << "Wait and received: " << QString(data);
+        std::cout << "Waited for call and received: " << name.toStdString() << " " << QString(data).toStdString() << std::endl;
     } else {
         //logovani chyb zatim nenam... ale je to api takze by to chtelo...
-//        qDebug() << "No data received. Call ended in timeout.";
+        std::cout << "No data received. Call ended by timeout: " << name.toStdString() << std::endl;
     }
 
     delete caller;

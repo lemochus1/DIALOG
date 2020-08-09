@@ -9,6 +9,7 @@
 #include "DIALOGapi.h"
 
 #include "testprocesscontroller.h"
+#include "apimessagelogger.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,41 +22,42 @@ void end(qint32 sig)
     process->stopSlot();
 }
 
-QString PROCESS_NAME = "Unknown";
 QString LOG_FILE_PATH = "default.log";
 
 void myMessageHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg)
 {
+    QString timestamp = "\"" + QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") + "\"";
+
     QString txt;
     switch (type) {
-    case QtDebugMsg:
-        txt = msg;
-        break;
     case QtWarningMsg:
-        txt = QString("WARNING: %1").arg(msg);
+        txt = timestamp + QString("WARNING: %1").arg(msg);
         break;
     case QtCriticalMsg:
-        txt = QString("CRITICAL: %1").arg(msg);
+        txt = timestamp + QString("CRITICAL: %1").arg(msg);
         break;
     case QtFatalMsg:
-        txt = QString("FATAL: %1").arg(msg);
-        abort();
+        txt = timestamp + QString("FATAL: %1").arg(msg);
+        break;
     default:
-        fprintf(stderr, "%s\n", msg.toLocal8Bit().constData());
+        txt = msg;
+        break;
     }
+
+    fprintf(stderr, "%s\n", txt.toLocal8Bit().constData());
 
     QFile outFile(LOG_FILE_PATH);
     outFile.open(QIODevice::WriteOnly | QIODevice::Append);
     QTextStream ts(&outFile);
     ts << txt << endl;
+    if (type == QtFatalMsg){
+        abort();
+    }
 }
-
 
 int main(int argc, char *argv[])
 {
     QCoreApplication app(argc, argv);
-    //DAQDebugger::init(argv[0]);
-    qInstallMessageHandler(myMessageHandler);
 
     if (app.arguments().size() < 2) {
         qDebug() << "Config file was not defined in the process arguments.";
@@ -90,13 +92,13 @@ int main(int argc, char *argv[])
     controller.setupProcess(configuration);
 
     if (!LOG_FILE_PATH.isEmpty()) {
-        PROCESS_NAME = controller.getProcessName();
-        qInstallMessageHandler(myMessageHandler);
+        APIMessageLogger::getInstance().setLogFile(LOG_FILE_PATH);
+        qInstallMessageHandler(&myMessageHandler);
     }
+
     controller.startProcess();
     controller.startSenders();
 
-    std::cout<< "After run";
     (void) signal(SIGINT, end);
     return app.exec();
 }

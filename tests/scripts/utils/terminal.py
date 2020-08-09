@@ -1,6 +1,12 @@
 import subprocess
 
-from utils.define import *
+
+TERMINAL_WIDTH = 65 # lines
+TERMINAL_HEIGHT = 18 # lines
+LINE_HEIGHT = 25
+LINE_WIDTH = 10
+TERMINALS_ON_LINE = 3
+
 
 opened_terminals = 0
 

@@ -11,7 +11,7 @@ TEST_DURATION = 15
 
 
 def evaluateTest(all_results):
-    print("Evaluating...")
+    print("Evaluated...")
     if hasHappendSomethingStrange(all_results):
         return False
 

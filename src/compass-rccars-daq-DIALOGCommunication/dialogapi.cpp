@@ -1,4 +1,4 @@
-#include "DIALOGapi.h"
+#include "dialogapi.h"
 
 DIALOGProcess::DIALOGProcess(QString nameInit, QObject *parent)
 : QObject(parent)
@@ -134,9 +134,7 @@ DIALOGProcess::SenderThread::~SenderThread()
 void DIALOGProcess::SenderThread::run()
 {
     server->connectToControlServerSlot();
-
-    QThread::msleep(2000); ///provizore fix
-
+//QThread::sleep(1);
     for (const auto name : commandsToRegister) {
         server->registerCommandSlot(name);
     }

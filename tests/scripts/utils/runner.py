@@ -23,6 +23,8 @@ class TestRunner:
         self.install = install
         self.process_names = list()
         self.log_paths = list()
+        self.control_server_log_path = None
+        self.opened_terminals = 0
 
         if name.endswith(SCRIPT_SUFFIX):
             name = name.replace(SCRIPT_SUFFIX, "")
@@ -31,15 +33,22 @@ class TestRunner:
         print(TERMINAL_SEPARATOR)
         print("Test: " + self.name)
 
+    def __logProcessStart(self, log_path):
+        with open(log_path, 'a') as file_object:
+            file_object.write(LOG_SEPARATOR)
+            file_object.write(self.__getTimeString() + " Started in: " + self.name + "\n")
+            file_object.write(LOG_SEPARATOR)
+
     def setup(self):
         if self.install:
             moveDialogToSharedDirectory()
-
-        if not isProcessRunning(CONTROL_SERVER_NAME):
-            runProcessNewTerminal(CONTROL_SERVER_PATH)
-
         if not os.path.exists(self.result_folder):
             os.mkdir(self.result_folder)
+        if not isProcessRunning(CONTROL_SERVER_NAME):
+            self.control_server_log_path = self.result_folder + "control-server" + LOG_SUFFIX
+            runProcessNewTerminal(CONTROL_SERVER_PATH, self.control_server_log_path, opened_terminals=self.opened_terminals)
+            self.opened_terminals+=1
+            self.__logProcessStart(self.control_server_log_path)
         print("Setuped...")
 
     @staticmethod
@@ -52,12 +61,6 @@ class TestRunner:
     def __getTimeString(self):
         now = datetime.now()
         return '"' + now.strftime("%Y-%m-%d %H:%M:%S") + '"'
-
-    def __logProcessStart(self, log_path):
-        with open(log_path, 'a') as file_object:
-            file_object.write(LOG_SEPARATOR)
-            file_object.write(self.__getTimeString() + " Started in: " + self.name + "\n")
-            file_object.write(LOG_SEPARATOR)
 
     def __logProcessKilled(self, log_path):
         with open(log_path, 'a') as file_object:
@@ -93,12 +96,18 @@ class TestRunner:
 
         self.__logProcessStart(log_path)
 
-        runProcessNewTerminal(TEST_PROCESS_PATH, arguments)
+        runProcessNewTerminal(TEST_PROCESS_PATH, arguments, opened_terminals=self.opened_terminals)
 
         self.process_names.append(name)
         self.log_paths.append(log_path)
+        self.opened_terminals += 1
 
-    def cleanup(self, ask=True):
+    def clear(self):
+        self.opened_terminals = 0
+        self.process_names = list()
+        self.log_paths = list()
+
+    def cleanup(self, ask=True, close=True):
         if ask and (len(sys.argv) < 2 or str(sys.argv[1]) == 'pause'):
             input("Press enter to continue...")
 
@@ -109,7 +118,8 @@ class TestRunner:
                 killProcessPid(pid)
         for log_path in self.log_paths:
             self.__logProcessKilled(log_path)
-        print(TERMINAL_SEPARATOR)
+        if close:
+            print(TERMINAL_SEPARATOR)
 
     def waitWhileTesting(self, duration=15):
         print("Started...")
@@ -131,3 +141,8 @@ class TestRunner:
             else:
                 results[name] = [result_object]
         return results
+
+    def getControlServerResult(self):
+        result_object = ResultObject(self.control_server_log_path, self.name)
+        result_object.readTestLog()
+        return result_object

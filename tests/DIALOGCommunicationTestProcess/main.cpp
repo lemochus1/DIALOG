@@ -6,7 +6,7 @@
 #include <QtGlobal>
 #include "daqdebugger.h"
 
-#include "DIALOGapi.h"
+#include "dialogapi.h"
 
 #include "testprocesscontroller.h"
 #include "apimessagelogger.h"
@@ -22,7 +22,7 @@ void end(qint32 sig)
     process->stopSlot();
 }
 
-QString LOG_FILE_PATH = "default.log";
+QString LOG_FILE_PATH = "";
 
 void myMessageHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg)
 {
@@ -45,11 +45,12 @@ void myMessageHandler(QtMsgType type, const QMessageLogContext &context, const Q
     }
 
     fprintf(stderr, "%s\n", txt.toLocal8Bit().constData());
-
-    QFile outFile(LOG_FILE_PATH);
-    outFile.open(QIODevice::WriteOnly | QIODevice::Append);
-    QTextStream ts(&outFile);
-    ts << txt << endl;
+    if (!LOG_FILE_PATH.isEmpty()){
+        QFile outFile(LOG_FILE_PATH);
+        outFile.open(QIODevice::WriteOnly | QIODevice::Append);
+        QTextStream ts(&outFile);
+        ts << txt << endl;
+    }
     if (type == QtFatalMsg){
         abort();
     }
@@ -88,14 +89,13 @@ int main(int argc, char *argv[])
         }
     }
 
-    TESTProcessController controller;
-    controller.setupProcess(configuration);
-
     if (!LOG_FILE_PATH.isEmpty()) {
         APIMessageLogger::getInstance().setLogFile(LOG_FILE_PATH);
         qInstallMessageHandler(&myMessageHandler);
     }
 
+    TESTProcessController controller;
+    controller.setupProcess(configuration);
     controller.startProcess();
     controller.startSenders();
 

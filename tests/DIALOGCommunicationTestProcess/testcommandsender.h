@@ -2,7 +2,7 @@
 #define TESTCOMMANDSENDER_H
 
 #include <QObject>
-#include "DIALOGapi.h"
+#include "dialogapi.h"
 #include "apimessagelogger.h"
 
 class TESTCommandSender : public QObject

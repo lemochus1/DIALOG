@@ -4,7 +4,7 @@
 #include <QObject>
 #include <QPair>
 
-#include "DIALOGapi.h"
+#include "dialogapi.h"
 
 #include "testcommandhandler.h"
 #include "testcommandsender.h"

@@ -21,7 +21,7 @@ Server::Server(QString serverNameInit, ProcessType processTypeInit, QString cont
 
     if(processType != ControlServer)
     {
-        serverAddress = QString(getenv("HOSTNAME"));
+        serverAddress = "192.168.122.1";//QString(getenv("HOSTNAME"));// removes mistake with everything i fount yet...
         serverPort = 0;
 
         if(serverAddress.length() == 0)
@@ -660,6 +660,7 @@ void Server::messageReceivedSlot(QString senderAddress, quint16 senderPort, QByt
 
             heartBeatTimer->start(HEARTBEAT_TIMER);
             qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Successfuly connected to CommunicationControlServer.";
+            emit successfullyConnectedToControlServer();
         }
         else if(header->contains(CONNECTION_LOST))
         {
@@ -888,6 +889,12 @@ void Server::connectToControlServerSlot()
         message->append(QString::number(serverProcess->processPID));
 
         Q_EMIT sendMessageSignal(controlServer->processAddress, controlServer->processPort, messageHeader(CONNECT_TO_CONTROL_SERVER), message);
+
+        waitForConnectionToControlServer();
+        if (!isConnectedToControlServer()) {
+            qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " Connection to control server failed. ";
+        }
+
     }
     else
     {
@@ -1044,8 +1051,6 @@ void Server::unRegisterCommandSlot(QString commandName)
 
 void Server::registerProcedureSlot(QString procedureName)
 {
-    qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "RegisterProcedureSlot";
-
     if(!procedures.contains(procedureName))
     {
         Procedure* procedure = new Procedure(procedureName);
@@ -1108,8 +1113,9 @@ void Server::serverErrorSlot(QString error)
 
 void Server::sendHeartBeatSlot()
 {
-    if(isConnectedToControlServer())
+    if(isConnectedToControlServer()) {
         Q_EMIT sendHeartBeatSignal(messageHeader(HEARTBEAT));
+    }
 }
 
 void Server::checkHeartBeatSlot()
@@ -1437,6 +1443,19 @@ bool Server::isProcessConnectedToControlServer(QString key)
         connected = processes[key]->connectedToControlServer;
     processLock.unlock();
     return connected;
+}
+
+void Server::waitForConnectionToControlServer(int sTimeout)
+{
+    if (!isConnectedToControlServer()) {
+        QTimer timer;
+        timer.setSingleShot(true);
+        QEventLoop loop;
+        connect(this, &Server::successfullyConnectedToControlServer, &loop, &QEventLoop::quit );
+        connect(&timer, &QTimer::timeout, &loop, &QEventLoop::quit );
+        timer.start(sTimeout * 1000);
+        loop.exec();
+    }
 }
 
 Server::~Server()

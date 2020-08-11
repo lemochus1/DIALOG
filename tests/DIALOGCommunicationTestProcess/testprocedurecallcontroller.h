@@ -4,7 +4,7 @@
 #include <QObject>
 #include <QTimer>
 
-#include "DIALOGapi.h"
+#include "dialogapi.h"
 #include "apimessagelogger.h"
 
 class TESTProcedureCallController : public QObject

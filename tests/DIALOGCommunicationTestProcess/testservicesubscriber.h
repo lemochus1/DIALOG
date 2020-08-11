@@ -2,7 +2,7 @@
 #define TESTSERVICESUBSCRIBER_H
 
 #include <QObject>
-#include "DIALOGapi.h"
+#include "dialogapi.h"
 #include "apimessagelogger.h"
 
 class TESTServiceSubscriber : public DIALOGServiceSubscriber

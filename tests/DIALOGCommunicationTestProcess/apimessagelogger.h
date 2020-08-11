@@ -15,14 +15,14 @@ public:
 
     void setLogFile(const QString& file);
 
-    void logCommandRegistered(const QString& name, const QString& message);
-    void logServiceRegistered(const QString& name, const QString& message);
-    void logProcedureRegistered(const QString& name, const QString& message);
+    void logCommandRegistered(const QString& name);
+    void logServiceRegistered(const QString& name);
+    void logProcedureRegistered(const QString& name);
 
     void logCommandSent(const QString& name, const QString& message);
     void logProcedureCallSent(const QString& name, const QString& message);
 
-    void logServiceRequested(const QString& name, const QString& message);
+    void logServiceRequested(const QString& name);
 
     void logServiceDataSent(const QString& name, const QString& message);
     void logProcedureDataSent(const QString& name, const QString& message);

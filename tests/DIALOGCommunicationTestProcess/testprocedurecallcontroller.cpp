@@ -29,7 +29,7 @@ void TESTProcedureCallController::callProcedure()
     QByteArray data = caller->waitForData(ok);
     if (ok) {
         APIMessageLogger::getInstance().logProcedureDataReceived(name, message);
-        std::cout << "Waited for call and received: " << name.toStdString() << " " << QString(data).toStdString() << std::endl;
+        std::cout << "Waited for call and received: " << name.toStdString() << " - " << QString(data).toStdString() << std::endl;
     } else {
         //logovani chyb zatim nenam... ale je to api takze by to chtelo...
         std::cout << "No data received. Call ended by timeout: " << name.toStdString() << std::endl;

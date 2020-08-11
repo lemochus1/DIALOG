@@ -21,7 +21,7 @@ void Sender::sendMessageSlot(QString receiverAddress, quint16 receiverPort, QByt
 
         QString receiverKey = receiverAddress + SEPARATOR + QString::number(receiverPort);
 
-        Process* process = NULL;
+        Process* process;
         if(server->getControlServer()->processKey == receiverKey)
             process = server->getControlServer();
         else
@@ -107,7 +107,7 @@ void Sender::sendDirectCommandUrlMessageSlot(QString commandName, QByteArray *me
             Process* senderProcess = new Process(url, port, Custom);
             server->addProcess(senderProcessKey, senderProcess);
 
-            qDebug() << "New process " << senderProcessKey;
+            //qDebug() << "New process " << senderProcessKey;
         }
 
         sendToHost(url, port, messageContainer);
@@ -142,7 +142,7 @@ void Sender::sendProcedureReturnMessageSlot(QString procedureName, QByteArray *m
             Process* senderProcess = new Process(url, port, Custom);
             server->addProcess(senderProcessKey, senderProcess);
 
-            qDebug() << "New process " << senderProcessKey;
+            //qDebug() << "New process " << senderProcessKey;
         }
         sendToHost(url, port, messageContainer);
     }

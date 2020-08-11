@@ -27,7 +27,7 @@ LIBS += -L$${RCCARS_DAQ_HOME}/compass-rccars-daq-DAQDebugger -lDAQDebugger
 
 
 HEADERS       = \
-    DIALOGapi.h \
+    dialogapi.h \
     procedure.h \
                 sender.h \
                 receiver.h \
@@ -43,7 +43,7 @@ HEADERS       = \
     messagecontainer.h \
     threadsafeqlist.h
 SOURCES       = \
-    DIALOGapi.cpp \
+    dialogapi.cpp \
     procedure.cpp \
                 sender.cpp \
                 receiver.cpp \

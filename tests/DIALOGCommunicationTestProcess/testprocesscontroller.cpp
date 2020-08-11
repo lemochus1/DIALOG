@@ -35,8 +35,7 @@ bool TESTProcessController::setupProcess(const QString& xmlConfiguration)
 
 void TESTProcessController::startProcess()
 {
-    //asi chci ale nemam jak...
-//    qDebug() << "Started process: " << process->getName();
+    std::cout << "Started process: " << process->getName().toStdString() << std::endl;
     process->start();
 }
 
@@ -156,16 +155,19 @@ bool TESTProcessController::readRegisterElement(QXmlStreamReader &reader)
             TESTCommandHandler* handler = new TESTCommandHandler(elementText);
             process->registerCommand(handler);
             commandHandlers.append(handler);
+            APIMessageLogger::getInstance().logCommandRegistered(elementText);
         } else if (SERVICE_ELEMENT == elementName) {
             int duration = tryGetIntAttribute(DURATION_ATTRIBUTE, attributes, 1);
             TESTServicePublisher* publisher = new TESTServicePublisher(elementText, process->getName(), duration);
             process->registerService(publisher);
             servicePublishers.append(publisher);
+            APIMessageLogger::getInstance().logServiceRegistered(elementText);
         } else if (PROCEDURE_ELEMENT == elementName) {
             int duration = tryGetIntAttribute(DURATION_ATTRIBUTE, attributes, 1);
             TESTProcedureHandler* handler = new TESTProcedureHandler(elementText, process->getName(), duration);
             process->registerProcedure(handler);
             procedureHandlers.append(handler);
+            APIMessageLogger::getInstance().logProcedureRegistered(elementText);
         } else {
             qDebug() << "Unkown element '" << elementName << "' parsed in Register element.";
         }
@@ -190,6 +192,7 @@ bool TESTProcessController::readRequireElement(QXmlStreamReader &reader)
             TESTServiceSubscriber* subscriber = new TESTServiceSubscriber(elementText);
             process->requestService(subscriber);
             serviceSubscribers.append(subscriber);
+            APIMessageLogger::getInstance().logServiceRequested(elementText);
         } else {
             qDebug() << "Unkown element '" << reader.name() << "' parsed in Require element.";
         }

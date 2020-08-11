@@ -2,7 +2,7 @@
 #define TESTSERVICEPROVIDER_H
 
 #include <QObject>
-#include "DIALOGapi.h"
+#include "dialogapi.h"
 #include "apimessagelogger.h"
 
 class TESTServicePublisher : public DIALOGServicePublisher

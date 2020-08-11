@@ -3,7 +3,7 @@
 
 #include <QObject>
 
-#include "DIALOGapi.h"
+#include "dialogapi.h"
 #include "apimessagelogger.h"
 
 class TESTProcedureHandler : public DIALOGProcedureHandler

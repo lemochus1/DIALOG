@@ -1,0 +1,37 @@
+connect-basic-test.py
+1/10
+Process was not connected to Control Server.
+1/10
+Process  "desktop-jttvct0|38618"  ( "dummy" ) crashed (No HeartBeats have been received).
+Proces nespadl nehlasi zadnou chybu, ale nic nedela
+
+register-basic-test.py
+2/10
+Process was not connected to Control Server.
+2/10
+Process  "desktop-jttvct0|37400"  ( "service-provider" ) crashed (No HeartBeats have been received)
+8/10
+Some process did not register anything on Control Server.
+
+
+Obe chyby se staly strasne castymi ale odstranila je zmena adresy na stejnou IP...
+Aspon to tak ted vypada...
+
+---------------------
+spolecna pricina (asi).... connect to control server musi blokovat vse ostatni... cekani vyskyt chyb velmi omezilo... ale to neni to reseni co chci....
+Dobre opakovatelne...
+cekam ale obcas nedostanu zpravu zpet od serveru nejspis... divne...
+WARNING: QSocketNotifier: Invalid socket specified
+
+
+
+--------------------------
+register-basic-test.py...
+
+"2020-08-10 23:49:50"   Service  "Service"  is not provided on the server.
+
+zajimava chyba co posila control server v odpovedi na registraci sluzby... asi
+-----------------------------
+command-basic-test.py
+obcasne nedoruceni zpravy...
+

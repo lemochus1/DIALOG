@@ -30,6 +30,9 @@ class Server : public QThread
     bool isConnectedToControlServer();
     bool isProcessConnectedToControlServer(QString key);
 
+    /// Waits for signal successfullyConnectedToControlServer or timeout
+    void waitForConnectionToControlServer(int sTimeout = 5);
+
 public:
     Server();
     Server(QString serverNameInit, ProcessType processTypeInit, QString controlServerAddressInit, quint16 controlServerPortInit, VirtualThread* senderThreadInit = NULL, VirtualThread* receiverThreadInit = NULL);
@@ -97,6 +100,11 @@ Q_SIGNALS:
     void serverErrorSignal(QString error);
     void receiverStartedSignal();
     void stopInitiated();
+
+    /// Emited when confirmation messages is received.
+    ///
+    /// connectToControlServer waits for it.
+    void successfullyConnectedToControlServer();
 
 private:
     Process* serverProcess;

@@ -1,16 +1,26 @@
-import time
+from define.processnames import *
+from define.argumentkeys import *
 
-from utils.runner import TestRunner
-from utils.evaluation import *
+from support.running import *
+from support.evaluation import *
 
+#===================================================================================================
+# Parameters
+#===================================================================================================
 
-COMMAND_HANDLER = "command-handler"
-TERGETED_COMMAND_HANDLER_NAME ="command-handler2"
-COMMAND_SANDER = "direct-command-sender"
+# Public and adjustable
+## Test
+TARGETED_HANDLER_COUNT = getArgumentValue(TARGETED_HANDLER_COUNT_KEY, 2)
+## Run
+CYCLE_COUNT = getArgumentValue(CYCLE_COUNT_KEY, 1)
 
-TARGETED_HANDLER_COUNT = 2
-TEST_DURATION = 15
+# Internal
+CYCLE_DURATION = 15 # seconds
+TERGETED_COMMAND_HANDLER_NAME = "targeted-handler"
 
+#===================================================================================================
+# Evaluation
+#===================================================================================================
 
 def evaluateTest(runner):
     print("Evaluated...")
@@ -48,18 +58,16 @@ def evaluateTest(runner):
         logger.log_and_print_message("Failed!", False)
     runner.cleanup(not passed)
 
+#===================================================================================================
+# Scripting
+#===================================================================================================
 
-runner = TestRunner()
+if __name__ == "__main__":
+    runner = TestRunner()
 
-runner.setup()
-time.sleep(0.2)
+    runner.addTestProcess(COMMAND_HANDLER)
+    runner.addTestProcess(COMMAND_HANDLER,
+                          name=TERGETED_COMMAND_HANDLER_NAME,
+                          count=TARGETED_HANDLER_COUNT)
 
-runner.startTestProcess(COMMAND_HANDLER)
-for i in range(TARGETED_HANDLER_COUNT):
-    runner.startTestProcess(COMMAND_HANDLER, name=TERGETED_COMMAND_HANDLER_NAME)
-    time.sleep(0.1)
-
-runner.startTestProcess(COMMAND_SANDER)
-runner.waitWhileTesting(TEST_DURATION)
-
-evaluateTest(runner)
+    runner.runTest(evaluate, CYCLE_DURATION, CYCLE_COUNT)

@@ -1,15 +1,27 @@
-import time
+from define.processnames import *
+from define.argumentkeys import *
 
-from utils.runner import TestRunner
-from utils.evaluation import *
+from support.running import *
+from support.evaluation import *
 
-PROCEDURE_HANDLER = "procedure-handler"
-PROCEDURE_CALLER = "procedure-caller"
+#===================================================================================================
+# Parameters
+#===================================================================================================
 
-TEST_DURATION = 10
+# Public and adjustable
+## Test
 
+## Run
+CYCLE_COUNT = getArgumentValue(CYCLE_COUNT_KEY, 1)
 
-def evaluateTest(runner):
+# Internal
+CYCLE_DURATION = 10 # seconds
+
+#===================================================================================================
+# Evaluation
+#===================================================================================================
+
+def evaluate(runner):
     print("Evaluated...")
     passed = True
 
@@ -42,12 +54,14 @@ def evaluateTest(runner):
         logger.log_and_print_message("Failed!", False)
     runner.cleanup(not passed)
 
-runner = TestRunner()
+#===================================================================================================
+# The scripting starts here
+#===================================================================================================
 
-runner.setup()
-time.sleep(0.2)
-runner.startTestProcess(PROCEDURE_HANDLER)
-time.sleep(0.5)
-runner.startTestProcess(PROCEDURE_CALLER)
-runner.waitWhileTesting(TEST_DURATION)
-evaluateTest(runner)
+if __name__ == "__main__":
+    runner = TestRunner()
+
+    runner.addTestProcess(PROCEDURE_HANDLER, pause=0.5)
+    runner.addTestProcess(PROCEDURE_CALLER)
+
+    runner.runTest(evaluate, CYCLE_DURATION, CYCLE_COUNT)

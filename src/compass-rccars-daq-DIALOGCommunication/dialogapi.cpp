@@ -67,7 +67,6 @@ void DIALOGProcess::registerService(DIALOGServicePublisher *publisher)
 {
     //receiver->registerService(publisher);
     sender->addServiceToRegister(publisher);
-    sender->addServiceToRequest(publisher->getName());
 }
 
 DIALOGServicePublisher *DIALOGProcess::registerService(QString name)

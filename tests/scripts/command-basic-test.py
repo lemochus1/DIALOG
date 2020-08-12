@@ -1,16 +1,27 @@
-import time
+from define.processnames import *
+from define.argumentkeys import *
 
-from utils.runner import TestRunner
-from utils.evaluation import *
+from support.running import *
+from support.evaluation import *
 
+#===================================================================================================
+# Parameters
+#===================================================================================================
 
-COMMAND_HANDLER = "command-handler"
-COMMAND_SANDER = "command-sender"
-HANDLERS_COUNT = 2
-TEST_DURATION = 15
+# Public and adjustable
+## Test
+HANDLER_COUNT = getArgumentValue(HANDLER_COUNT_KEY, 2)
+## Run
+CYCLE_COUNT = getArgumentValue(CYCLE_COUNT_KEY, 1)
 
+# Internal
+CYCLE_DURATION = 15 # seconds
 
-def evaluateTest(runner):
+#===================================================================================================
+# Evaluation
+#===================================================================================================
+
+def evaluate(runner):
     print("Evaluated...")
     passed = True
 
@@ -46,18 +57,14 @@ def evaluateTest(runner):
         logger.log_and_print_message("Failed!", False)
     runner.cleanup(not passed)
 
+#===================================================================================================
+# Scripting
+#===================================================================================================
 
-runner = TestRunner()
+if __name__ == "__main__":
+    runner = TestRunner()
 
-runner.setup()
-time.sleep(2)
+    runner.addTestProcess(COMMAND_HANDLER, count=HANDLER_COUNT)
+    runner.addTestProcess(COMMAND_SANDER)
 
-for i in range(HANDLERS_COUNT):
-    runner.startTestProcess(COMMAND_HANDLER)
-    time.sleep(1)
-time.sleep(1)
-
-runner.startTestProcess(COMMAND_SANDER)
-runner.waitWhileTesting(TEST_DURATION)
-
-evaluateTest(runner)
+    runner.runTest(evaluate, CYCLE_DURATION, CYCLE_COUNT)

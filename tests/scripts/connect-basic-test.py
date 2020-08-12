@@ -1,26 +1,32 @@
-import time
-import os
+from define.processnames import *
+from define.argumentkeys import *
 
-from utils.runner import TestRunner
-from utils.evaluation import *
-from utils.define import *
+from support.running import *
+from support.evaluation import *
 
-SERVICE_SUBSCRIBER = "service-subscriber"
-SERVICE_PROVIDER = "service-provider"
-HANDLERS_COUNT = 2
-TEST_DURATION = 10
+#===================================================================================================
+# Parameters
+#===================================================================================================
+
+# Public and adjustable
+## Test
+PROCESS_COUNT = getArgumentValue(PROCESS_COUNT_KEY, 2)
+SLEEP_TIME = 0
+## Run
+CYCLE_COUNT = getArgumentValue(CYCLE_COUNT_KEY, 5)
+
+# Internal
+CYCLE_DURATION = 2 # seconds
 
 PROCESS_NAME = "dummy"
 
-PROCESS_COUNT = 5
-SLEEP_TIME = 0
-
-CYCLES = 5
+#===================================================================================================
+# Evaluation
+#===================================================================================================
 
 NORMAL_LOG_START = 'Service  "Service"  has been subscribed by'
 
-
-def evaluateTest(runner):
+def evaluate(runner):
     print("Evaluated...")
     passed = True
 
@@ -40,17 +46,11 @@ def evaluateTest(runner):
         logger.log_and_print_message("Failed!", False)
     runner.cleanup(not passed, False)
 
+#===================================================================================================
+# Scripting
+#===================================================================================================
 
-runner = TestRunner()
-
-for i in range(CYCLES):
-    runner.clear()
-    runner.setup()
-    time.sleep(0.5)
-    for j in range(PROCESS_COUNT):
-        if SLEEP_TIME:
-            time.sleep(SLEEP_TIME)
-        runner.startTestProcess(PROCESS_NAME)
-    time.sleep(2)
-    evaluateTest(runner)
-print(TERMINAL_SEPARATOR)
+if __name__ == "__main__":
+    runner = TestRunner()
+    runner.addTestProcess(PROCESS_NAME, pause=SLEEP_TIME, count=PROCESS_COUNT)
+    runner.runTest(evaluate, CYCLE_DURATION, CYCLE_COUNT)

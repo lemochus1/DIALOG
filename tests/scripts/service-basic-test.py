@@ -1,19 +1,33 @@
-import time
+from define.processnames import *
+from define.argumentkeys import *
+
+from support.running import *
+from support.evaluation import *
+
 import xml.etree.ElementTree as ET
 
-from utils.runner import TestRunner
-from utils.evaluation import *
+#===================================================================================================
+# Parameters
+#===================================================================================================
 
-SERVICE_SUBSCRIBER = "service-subscriber"
-SERVICE_PROVIDER = "service-provider"
-HANDLERS_COUNT = 2
+# Public and adjustable
+## Test
+HANDLER_COUNT = getArgumentValue(HANDLER_COUNT_KEY, 2)
 TEST_DURATION = 10
+## Run
+CYCLE_COUNT = getArgumentValue(CYCLE_COUNT_KEY, 1)
+
+# Internal
+CYCLE_DURATION = 6
 
 NORMAL_LOG_START = 'Service  "Service"  has been subscribed by'
-
 SERVICE_DATA = "service-data"
 
-def evaluateTest(runner):
+#===================================================================================================
+# Evaluation
+#===================================================================================================
+
+def evaluate(runner):
     print("Evaluated...")
     passed = True
 
@@ -73,13 +87,14 @@ def evaluateTest(runner):
         logger.log_and_print_message("Failed!", False)
     runner.cleanup(not passed)
 
+#===================================================================================================
+# Scripting
+#===================================================================================================
 
-runner = TestRunner()
+if __name__ == "__main__":
+    runner = TestRunner()
 
-runner.setup()
-time.sleep(0.2)
-runner.startTestProcess(SERVICE_PROVIDER)
-time.sleep(1)
-runner.startTestProcess(SERVICE_SUBSCRIBER)
-runner.waitWhileTesting(8)
-evaluateTest(runner)
+    runner.addTestProcess(SERVICE_PROVIDER, pause=0.5)
+    runner.addTestProcess(SERVICE_SUBSCRIBER)
+
+    runner.runTest(evaluate, CYCLE_DURATION, CYCLE_COUNT)

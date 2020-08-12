@@ -21,7 +21,14 @@ Server::Server(QString serverNameInit, ProcessType processTypeInit, QString cont
 
     if(processType != ControlServer)
     {
-        serverAddress = "192.168.122.1";//QString(getenv("HOSTNAME"));// removes mistake with everything i fount yet...
+        QHostInfo info = QHostInfo::fromName(getenv("HOSTNAME"));
+        if (!info.addresses().isEmpty()){
+            QHostAddress address = info.addresses().first();
+            serverAddress = address.toString();
+        }
+        else {
+            serverAddress = QString(getenv("HOSTNAME"));
+        }
         serverPort = 0;
 
         if(serverAddress.length() == 0)
@@ -263,7 +270,6 @@ void Server::messageReceivedSlot(QString senderAddress, quint16 senderPort, QByt
                                 infoService->append(service->sender->processAddress);
                                 infoService->append(SEPARATOR);
                                 infoService->append(QString::number(service->sender->processPort));
-
                                 Q_EMIT sendMessageSignal(receiver->processAddress, receiver->processPort, messageHeader(INFO_SERVICE), infoService);
                             }
                         }

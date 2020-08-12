@@ -1,22 +1,29 @@
-import time
-import os
+from define.processnames import *
+from define.argumentkeys import *
 
-from utils.runner import TestRunner
-from utils.evaluation import *
-from utils.define import *
+from support.running import *
+from support.evaluation import *
 
+#===================================================================================================
+# Parameters
+#===================================================================================================
 
-SERVICE_PROVIDER = "service-provider"
-COMMAND_HANDLER = "command-handler"
-PROCEDURE_HANDLER = "procedure-handler"
+# Public and adjustable
+## Test
+SLEEP_TIME = 0.1
+## Run
+CYCLE_COUNT = getArgumentValue(CYCLE_COUNT_KEY, 5)
+
+# Internal
+CYCLE_DURATION = 2 # seconds
 
 PROCESS_NAMES = [SERVICE_PROVIDER, COMMAND_HANDLER, PROCEDURE_HANDLER]
 
-SLEEP_TIME = 0.1
+#===================================================================================================
+# Evaluation
+#===================================================================================================
 
-CYCLES = 5
-
-def evaluateTest(runner):
+def evaluate(runner):
     print("Evaluated...")
     passed = True
 
@@ -35,7 +42,7 @@ def evaluateTest(runner):
     control_result = runner.getControlServerResult()
     if controlServerError(control_result.unknown_messages, logger):
         passed = False
-    if len(control_result.unknown_messages) is not (len(PROCESS_NAMES) * 2 + 1):
+    if len(control_result.unknown_messages) is not (len(PROCESS_NAMES) * 2):
         logger.log_and_print_message("Some process did not register anything on Control Server.")
         passed = False
 
@@ -45,17 +52,14 @@ def evaluateTest(runner):
         logger.log_and_print_message("Failed!", False)
     runner.cleanup(not passed, False)
 
+#===================================================================================================
+# Scripting
+#===================================================================================================
 
-runner = TestRunner()
-
-for i in range(CYCLES):
-    runner.clear()
-    runner.setup()
-    time.sleep(0.2)
+if __name__ == "__main__":
+    runner = TestRunner()
 
     for name in PROCESS_NAMES:
-        runner.startTestProcess(name)
-        time.sleep(SLEEP_TIME)
-    time.sleep(6)
-    evaluateTest(runner)
-print(TERMINAL_SEPARATOR)
+        runner.addTestProcess(name, pause=SLEEP_TIME)
+
+    runner.runTest(evaluate, CYCLE_DURATION, CYCLE_COUNT)

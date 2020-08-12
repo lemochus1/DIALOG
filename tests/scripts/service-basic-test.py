@@ -1,8 +1,8 @@
-from define.processnames import *
-from define.argumentkeys import *
+from define.processes import *
+from define.arguments import *
 
 from support.running import *
-from support.evaluation import *
+from support.evaluating import *
 
 import xml.etree.ElementTree as ET
 

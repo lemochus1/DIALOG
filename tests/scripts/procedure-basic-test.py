@@ -1,8 +1,8 @@
-from define.processnames import *
-from define.argumentkeys import *
+from define.processes import *
+from define.arguments import *
 
 from support.running import *
-from support.evaluation import *
+from support.evaluating import *
 
 #===================================================================================================
 # Parameters
@@ -21,47 +21,31 @@ CYCLE_DURATION = 10 # seconds
 # Evaluation
 #===================================================================================================
 
-def evaluate(runner):
-    print("Evaluated...")
-    passed = True
+class ProcedureEvaluator(TestEvaluator):
+    def __init__(self):
+        pass
 
-    logger = TestEvaluationLogger()
-    logger.log_evaluation_start()
+    def setupProcessResults(self):
+        pass
 
-    all_results = runner.getResults()
-
-    if hasHappendSomethingStrange(all_results, logger):
-        passed = False
-    else:
-        handler = all_results[PROCEDURE_HANDLER][0]
-        caller = all_results[PROCEDURE_CALLER][0]
-
-        if handler.registered_counter is not 1:
-            logger.log_and_print_message("Procedure was not registered.")
-            passed = False
-
-        lost_commands = caller.sent_counter - handler.received_counter
-        if lost_commands is not 0:
-            logger.log_and_print_message(str(lost_commands) + " commands were send but not received.")
-            passed = False
-
-        if not (handler.received_messages == caller.sent_messages and handler.sent_messages == caller.received_messages):
-            logger.log_and_print_message("Some messages were delivered demaged.")
-            passed =False
-    if passed:
-        logger.log_and_print_message("Passed!", False)
-    else:
-        logger.log_and_print_message("Failed!", False)
-    runner.cleanup(not passed)
+    def evaluate(self):
+        if self.noErrorOccured():
+            self.checkAllUnexpectedMessages()
+            handler = self.test_process_results[PROCEDURE_HANDLER][0]
+            if self.hasRegisteredSomething(handler):
+                sender = self.test_process_results[PROCEDURE_CALLER][0]
+                return self.isConsistent(sender, handler) and self.isConsistent(handler, sender)
+        return False
 
 #===================================================================================================
-# The scripting starts here
+# Scripting
 #===================================================================================================
 
 if __name__ == "__main__":
     runner = TestRunner()
+    evaluator = ProcedureEvaluator()
 
     runner.addTestProcess(PROCEDURE_HANDLER, pause=0.5)
     runner.addTestProcess(PROCEDURE_CALLER)
 
-    runner.runTest(evaluate, CYCLE_DURATION, CYCLE_COUNT)
+    runner.runTest(evaluator, CYCLE_DURATION, CYCLE_COUNT)

@@ -1,8 +1,8 @@
-from define.processnames import *
-from define.argumentkeys import *
+from define.processes import *
+from define.arguments import *
 
 from support.running import *
-from support.evaluation import *
+from support.evaluating import *
 
 #===================================================================================================
 # Parameters
@@ -22,41 +22,21 @@ TERGETED_COMMAND_HANDLER_NAME = "targeted-handler"
 # Evaluation
 #===================================================================================================
 
-def evaluateTest(runner):
-    print("Evaluated...")
-    passed = True
+class DirectCommandEvaluator(TestEvaluator):
+    def __init__(self):
+        pass
 
-    logger = TestEvaluationLogger()
-    logger.log_evaluation_start()
+    def setupProcessResults(self):
+        pass
 
-    all_results = runner.getResults()
-
-    if hasHappendSomethingStrange(all_results, logger):
-        passed = False
-    else:
-        handlers_results = all_results[TERGETED_COMMAND_HANDLER_NAME]
-        sender_result = all_results[COMMAND_SANDER][0]
-
-        for handler in handlers_results:
-            if handler.registered_counter is not 1:
-                logger.log_and_print_message("Command was not registered.")
-                passed = False
-                break
-
-            lost_commands = sender_result.sent_counter - handler.received_counter
-            if lost_commands == 1:
-                logger.log_and_print_message(str(lost_commands) + " commands were send but not received.")
-                passed = False
-
-            if passed and not handler.received_messages == sender_result.sent_messages:
-                logger.log_and_print_message("Some message was delivered demaged.")
-                passed = False
-
-    if passed:
-        logger.log_and_print_message("Passed!", False)
-    else:
-        logger.log_and_print_message("Failed!", False)
-    runner.cleanup(not passed)
+    def evaluate(self):
+        if self.noErrorOccured():
+            self.checkAllUnexpectedMessages()
+            handlers = self.test_process_results[TERGETED_COMMAND_HANDLER_NAME]
+            if self.hasRegisteredSomething(handlers):
+                sender = self.test_process_results[COMMAND_SANDER][0]
+                return self.isConsistent(sender, handlers)
+        return False
 
 #===================================================================================================
 # Scripting
@@ -64,10 +44,11 @@ def evaluateTest(runner):
 
 if __name__ == "__main__":
     runner = TestRunner()
+    evaluator = DirectCommandEvaluator()
 
     runner.addTestProcess(COMMAND_HANDLER)
     runner.addTestProcess(COMMAND_HANDLER,
                           name=TERGETED_COMMAND_HANDLER_NAME,
                           count=TARGETED_HANDLER_COUNT)
 
-    runner.runTest(evaluate, CYCLE_DURATION, CYCLE_COUNT)
+    runner.runTest(evaluator, CYCLE_DURATION, CYCLE_COUNT)

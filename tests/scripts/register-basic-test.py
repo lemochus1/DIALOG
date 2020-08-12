@@ -1,8 +1,8 @@
-from define.processnames import *
-from define.argumentkeys import *
+from define.processes import *
+from define.arguments import *
 
 from support.running import *
-from support.evaluation import *
+from support.evaluating import *
 
 #===================================================================================================
 # Parameters
@@ -23,34 +23,29 @@ PROCESS_NAMES = [SERVICE_PROVIDER, COMMAND_HANDLER, PROCEDURE_HANDLER]
 # Evaluation
 #===================================================================================================
 
-def evaluate(runner):
-    print("Evaluated...")
-    passed = True
+class RegisterEvaluator(TestEvaluator):
+    def __init__(self):
+        pass
 
-    logger = TestEvaluationLogger()
-    logger.log_evaluation_start()
+    def setupProcessResults(self):
+        self.control_server_result.addControlledMessage(
+                                   "has been registered on CommunicationControlServer")
 
-    if hasHappendSomethingStrange(runner.getResults(), logger):
-        passed = False
+    def evaluate(self):
+        if self.noErrorOccured():
+            self.checkAllUnexpectedMessages()
 
-    for name, result_object in runner.getResults().items():
-        result_object = result_object[0]
-        if result_object.registered_counter is not 1:
-            logger.log_and_print_message(name + "did not send register message.")
-            passed = False
-
-    control_result = runner.getControlServerResult()
-    if controlServerError(control_result.unknown_messages, logger):
-        passed = False
-    if len(control_result.unknown_messages) is not (len(PROCESS_NAMES) * 2):
-        logger.log_and_print_message("Some process did not register anything on Control Server.")
-        passed = False
-
-    if passed:
-        logger.log_and_print_message("Passed!", False)
-    else:
-        logger.log_and_print_message("Failed!", False)
-    runner.cleanup(not passed, False)
+            processes = list()
+            for result in self.test_process_results.items():
+                processes.extend(result)
+            if self.hasRegisteredSomething(processes):
+                registred_count = len(self.control_server_result.controlled_messages)
+                if registred_count is not len(PROCESS_NAMES):
+                    logger.logAndPrint("Some process did not register anything on Control Server.")
+                    return False
+                else:
+                    return True
+        return False
 
 #===================================================================================================
 # Scripting
@@ -58,8 +53,9 @@ def evaluate(runner):
 
 if __name__ == "__main__":
     runner = TestRunner()
+    evaluator = RegisterEvaluator()
 
     for name in PROCESS_NAMES:
         runner.addTestProcess(name, pause=SLEEP_TIME)
 
-    runner.runTest(evaluate, CYCLE_DURATION, CYCLE_COUNT)
+    runner.runTest(evaluator, CYCLE_DURATION, CYCLE_COUNT)

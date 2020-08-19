@@ -30,9 +30,6 @@ class Server : public QThread
     bool isConnectedToControlServer();
     bool isProcessConnectedToControlServer(QString key);
 
-    /// Waits for signal successfullyConnectedToControlServer or timeout
-    void waitForConnectionToControlServer(int sTimeout = 5);
-
 public:
     Server();
     Server(QString serverNameInit, ProcessType processTypeInit, QString controlServerAddressInit, quint16 controlServerPortInit, VirtualThread* senderThreadInit = NULL, VirtualThread* receiverThreadInit = NULL);
@@ -55,6 +52,9 @@ public:
     void removeProcess(QString key);
 
     QMutex processLock;// casto se pouziva v socketu...
+
+    /// Waits for signal successfullyConnectedToControlServer or timeout
+    bool waitForConnectionToControlServer(int sTimeout = 5);
 
 public Q_SLOTS:
     //Napojuje se na to socket...

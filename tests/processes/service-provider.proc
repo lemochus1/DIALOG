@@ -2,6 +2,6 @@
 <process name="service-provider">
     <control-server address="127.0.0.1" port="8081"/>
     <register>
-        <service duration="1">Service</service>
+        <service duration="{DURATION}" repeat="{REPEAT}" size="{SIZE}">Service</service>
     </register>
 </process>

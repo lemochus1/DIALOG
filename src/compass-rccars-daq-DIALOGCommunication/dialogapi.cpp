@@ -92,25 +92,32 @@ DIALOGServiceSubscriber *DIALOGProcess::requestService(QString name)
 
 DIALOGProcedureCaller *DIALOGProcess::callProcedure(QString name, QByteArray message)
 {
-    DIALOGProcedureCaller* caller = new DIALOGProcedureCaller(name);
-    receiver->registerProcedureCaller(caller);
-    sender->callProcedureSlot(name, message);
-    return caller;
+    if (server->waitForConnectionToControlServer(5)) {
+        DIALOGProcedureCaller* caller = new DIALOGProcedureCaller(name);
+        receiver->registerProcedureCaller(caller);
+        sender->callProcedureSlot(name, message);
+        return caller;
+    }
+    return nullptr;
 }
 
 void DIALOGProcess::sendCommandSlot(QString name, QByteArray message)
 {
-    QByteArray* commandMessage = new QByteArray();
-    commandMessage->append(message);
-    sender->sendCommandSlot(name, commandMessage);
+    if (server->waitForConnectionToControlServer(5)) {
+        QByteArray* commandMessage = new QByteArray();
+        commandMessage->append(message);
+        sender->sendCommandSlot(name, commandMessage);
+    }
 }
 
 void DIALOGProcess::sendDirectCommandSlot(QString name, QByteArray message, QString processName)
 {
-    QByteArray* commandMessage = new QByteArray();
-    commandMessage->append(message);
+    if (server->waitForConnectionToControlServer(5)) {
+        QByteArray* commandMessage = new QByteArray();
+        commandMessage->append(message);
 
-    sender->sendDirectCommandSlot(name, commandMessage, processName);
+        sender->sendDirectCommandSlot(name, commandMessage, processName);
+    }
 }
 
 void DIALOGProcess::sendDirectCommandSlot(QString name, QByteArray message, QString url, int port)
@@ -359,6 +366,7 @@ QByteArray DIALOGProcedureCaller::waitForData(bool &ok, int timeout)
     connect(&timer, &QTimer::timeout, &loop, &QEventLoop::quit );
     timer.start(timeout * 1000);
     loop.exec();
+
     ok = dataSet;
     return data;
 }

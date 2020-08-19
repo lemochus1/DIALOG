@@ -35,3 +35,33 @@ zajimava chyba co posila control server v odpovedi na registraci sluzby... asi
 command-basic-test.py
 obcasne nedoruceni zpravy...
 
+
+"2020-08-17 20:11:11"   The server is running on IP:  "10.0.0.109" , port:  36760
+"2020-08-17 20:11:11"   Successfuly connected to CommunicationControlServer.
+"2020-08-17 20:11:26"   The connection was refused by the Receiver ( "127.0.0.1" ,  "8081" ).
+"2020-08-17 20:11:29"   The connection was refused by the Receiver ( "127.0.0.1" ,  "8081" ).
+"2020-08-17 20:11:34"  Connection to control server failed. 
+"2020-08-17 20:11:35"   The connection was refused by the Receiver ( "127.0.0.1" ,  "8081" ).
+"2020-08-17 20:11:40"  Connection to control server failed. 
+"2020-08-17 20:11:41"   The connection was refused by the Receiver ( "127.0.0.1" ,  "8081" ).
+"2020-08-17 20:11:46"  Connection to control server failed. 
+"2020-08-17 20:11:47"   The connection was refused by the Receiver ( "127.0.0.1" ,  "8081" ).
+"2020-08-17 20:11:52"  Connection to control server failed. 
+"2020-08-17 20:11:53"   The connection was refused by the Receiver ( "127.0.0.1" ,  "8081" ).
+"2020-08-17 20:11:58"  Connection to control server failed. 
+"2020-08-17 20:11:59"   The connection was refused by the Receiver ( "127.0.0.1" ,  "8081" ).
+"2020-08-17 20:12:04"  Connection to control server failed. 
+"2020-08-17 20:12:05"   The connection was refused by the Receiver ( "127.0.0.1" ,  "8081" ).
+"2020-08-17 20:12:10"  Connection to control server failed. 
+"2020-08-17 20:12:11"   The connection was refused by the Receiver ( "127.0.0.1" ,  "8081" ).
+"2020-08-17 20:12:16"  Connection to control server failed. 
+"2020-08-17 20:12:17"   The connection was refused by the Receiver ( "127.0.0.1" ,  "8081" ).
+"2020-08-17 20:12:22"  Connection to control server failed. 
+"2020-08-17 20:12:23"   The connection was refused by the Receiver ( "127.0.0.1" ,  "8081" ).
+"2020-08-17 20:12:28"  Connection to control server failed. 
+"2020-08-17 20:12:29"   The connection was refused by the Receiver ( "127.0.0.1" ,  "8081" ).
+"2020-08-17 20:12:34"  Connection to control server failed. 
+"2020-08-17 20:12:35"   The connection was refused by the Receiver ( "127.0.0.1" ,  "8081" ).
+
+
+

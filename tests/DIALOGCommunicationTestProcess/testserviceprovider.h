@@ -10,7 +10,8 @@ class TESTServicePublisher : public DIALOGServicePublisher
     Q_OBJECT
 
 public:
-    TESTServicePublisher(QString nameInit, QString processNameInit, int updatePeriodInit=1);
+    TESTServicePublisher(QString nameInit, QString processNameInit, int updatePeriodInit=1,
+                         int repeatInit = 100, int messageSizeInit = 0);
 
     void start();
 
@@ -23,6 +24,8 @@ private:
     QString processName;
     int updatePeriod;
     int updateCounter;
+    int repeat;
+    int size;
     QMutex mutex;
     QTimer* timer;
 

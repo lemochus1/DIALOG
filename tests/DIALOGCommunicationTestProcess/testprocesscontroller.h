@@ -34,10 +34,11 @@ private:
     bool readProcessElement(QXmlStreamReader& reader);
     bool readControlServerElement(QXmlStreamReader& reader);
     bool readRegisterElement(QXmlStreamReader& reader);
-    bool readRequireElement(QXmlStreamReader& reader);
+    bool readRequestElement(QXmlStreamReader& reader);
     bool readSendElement(QXmlStreamReader& reader);
 
-    int tryGetIntAttribute(const QString& name, const QXmlStreamAttributes& attributes, int defaultValue);
+    int tryGetIntAttribute(const QString& name, const QXmlStreamAttributes& attributes,
+                           int defaultValue);
 
     QList<TESTCommandHandler*> commandHandlers;
     QList<TESTServicePublisher*> servicePublishers;

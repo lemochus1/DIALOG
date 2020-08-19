@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <process name="service-subscriber">
     <control-server address="127.0.0.1" port="8081"/>
-    <require>
+    <request>
         <service>Service</service>
-    </require>
+    </request>
 </process>

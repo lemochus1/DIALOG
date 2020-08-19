@@ -1,13 +1,14 @@
 #include "testcommandsender.h"
 
-TESTCommandSender::TESTCommandSender(QString nameInit, DIALOGProcess *processInit, int pauseInit, int repeatInit)
+TESTCommandSender::TESTCommandSender(QString nameInit, DIALOGProcess *processInit, int pauseInit, int repeatInit, int messageSizeInit)
     : QObject(nullptr),
       commandName(nameInit),
       pause(pauseInit),
       repeat(repeatInit),
       sendCounter(0),
       toName(false),
-      toAddress(false)
+      toAddress(false),
+      size(messageSizeInit)
 {
     process = processInit;
     processName = process->getName();
@@ -32,7 +33,7 @@ void TESTCommandSender::start()
 {
     timer = new QTimer(this);
     connect(timer, &QTimer::timeout, this, &TESTCommandSender::sendCommand);
-    timer->start(pause * 1000);
+    timer->start(pause);
 }
 
 void TESTCommandSender::sendCommand()
@@ -40,6 +41,10 @@ void TESTCommandSender::sendCommand()
     mutex.lock();
     QByteArray message;
     message.append(QString::number(sendCounter));
+    if (size > 0) {
+        message.append("-" + QString::number(size) + "-");
+        message.append(APIMessageLogger::getInstance().generateRandomString(size));
+    }
     if (sendCounter == repeat) {
         timer->stop();
     } else {
@@ -47,15 +52,18 @@ void TESTCommandSender::sendCommand()
     }
     mutex.unlock();
 
+    QString asString = APIMessageLogger::getInstance().getMessageLogString(message);
+
     if (toAddress) {
         process->sendDirectCommandSlot(commandName, message, address, port);
-        std::cout << "Send command: " << commandName.toStdString() << " - " << QString(message).toStdString() << " to " << address.toStdString() << "|" << port << std::endl;
+        std::cout << "Send command: " << commandName.toStdString() << " - " << asString.toStdString() << " to " << address.toStdString() << "|" << port << std::endl;
     } else if (toName) {
         process->sendDirectCommandSlot(commandName, message, targetProcessName);
-        std::cout << "Send command: " << commandName.toStdString() << " - " << QString(message).toStdString() << std::endl;
+        std::cout << "Send command: " << commandName.toStdString() << " - " << asString.toStdString() << std::endl;
     } else {
         process->sendCommandSlot(commandName, message);
-        std::cout << "Send command: " << commandName.toStdString() << " - " << QString(message).toStdString() << std::endl;
+        std::cout << "Send command: " << commandName.toStdString() << " - " << asString.toStdString() << std::endl;
     }
-    APIMessageLogger::getInstance().logCommandSent(commandName, message);
+
+    APIMessageLogger::getInstance().logCommandSent(commandName, asString);
 }

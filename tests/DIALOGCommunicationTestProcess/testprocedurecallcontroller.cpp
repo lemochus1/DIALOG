@@ -14,7 +14,7 @@ TESTProcedureCallController::TESTProcedureCallController(QString nameInit, DIALO
 void TESTProcedureCallController::start()
 {
     timer = new QTimer(this);
-    timer->singleShot(duration*1000, this, &TESTProcedureCallController::callProcedure);
+    timer->singleShot(duration, this, &TESTProcedureCallController::callProcedure);
 }
 
 void TESTProcedureCallController::callProcedure()
@@ -39,6 +39,6 @@ void TESTProcedureCallController::callProcedure()
 
     callCounter++;
     if (callCounter < repeat) {
-        timer->singleShot(duration*1000, this, &TESTProcedureCallController::callProcedure);
+        timer->singleShot(duration, this, &TESTProcedureCallController::callProcedure);
     }
 }

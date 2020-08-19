@@ -2,6 +2,6 @@
 <process name="procedure-handler">
     <control-server address="127.0.0.1" port="8081"/>
     <register>
-        <procedure duration="1">Procedure</procedure>
+        <procedure duration="{DURATION}">Procedure</procedure>
     </register>
 </process>

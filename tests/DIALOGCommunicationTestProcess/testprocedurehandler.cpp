@@ -17,7 +17,7 @@ void TESTProcedureHandler::callRequestedSlot(QByteArray params, QString urlInit,
     message.append(QString::number(callCounter));
     callCounter++;
 
-    QThread::sleep(callDuration);
+    QThread::usleep(callDuration);
 
     emit callFinishedSignal(getName(), message, urlInit, portInit);
 

@@ -84,6 +84,30 @@ void APIMessageLogger::logProcedureCallReceived(const QString &name, const QStri
     printMessage(composeLogMessage(RECEIVED, PROCEDURE_CALL, name, message));
 }
 
+QString APIMessageLogger::getMessageLogString(const QByteArray &message)
+{
+    QString asString = QString(message);
+    if (!asString.contains("-")){
+        return asString;
+    }
+    QStringList split = asString.split("-");
+    int size = split[1].toInt();
+    return split[0] + " " + QString::number(size) + "*" + "'" + split[2][0] + "'";
+}
+
+QString APIMessageLogger::generateRandomString(int size)
+{
+   const QString possibleCharacters("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789");
+   QString randomString;
+   for(int i=0; i<size; ++i)
+   {
+       int index = qrand() % possibleCharacters.length();
+       QChar nextChar = possibleCharacters.at(index);
+       randomString.append(nextChar);
+   }
+   return randomString;
+}
+
 APIMessageLogger::APIMessageLogger()
     : logFile("")
 {

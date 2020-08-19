@@ -1,18 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<process name="command-handler" address="" port="">
-    <control-server address="127.0.0.1" port="8081"/>
+<process name="template" address="{IP}" port="{PORT}">
+    <control-server address="{CONTROL_IP}" port="{CONTROL_PORT}"/>
     <register>
-        <command>Name</command>
-        <service duration="1">Name</service>
-        <procedure duration="1">Name</procedure>
+        <command>{COMMAND_NAME}</command>
+        <service duration="{DURATION}" size="{SIZE}" repeat="{REPEAT}">{SERVICE_NAME}</service>
+        <procedure duration="{DURATION}">{PROCEDURE_NAME}</procedure>
     </register>
-    <require>
-        <service>Name</service>
-    </require>
-    <send repeat="5" duration="1">
-        <procedure>Name</procedure>
-        <command>Name</command>
-        <direct-command address="" port="">Name</direct-command>
-        <direct-command process="">Name</direct-command>
+    <request>
+        <service>{SERVICE_NAME}</service>
+    </request>
+    <send repeat="{REPEAT}" duration="{DURATION}" size="{SIZE}">
+        <procedure>{PROCEDURE_NAME}</procedure>
+        <command>{COMMAND_NAME}</command>
+        <direct-command address="{TARGETED_IP}" port="{TARGETED_PORT}">{COMMAND_NAME}</direct-command>
+        <direct-command process="{TARGETED_PROCESS}">{COMMAND_NAME}</direct-command>
     </send>
 </process>

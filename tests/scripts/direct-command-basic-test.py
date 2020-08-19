@@ -1,22 +1,43 @@
 from define.processes import *
 from define.arguments import *
 
-from support.running import *
-from support.evaluating import *
+from shared.running import *
+from shared.evaluating import *
 
 #===================================================================================================
 # Parameters
 #===================================================================================================
 
-# Public and adjustable
-## Test
-TARGETED_HANDLER_COUNT = getArgumentValue(TARGETED_HANDLER_COUNT_KEY, 2)
-## Run
-CYCLE_COUNT = getArgumentValue(CYCLE_COUNT_KEY, 1)
+# Test
+## Public
+TARGETED_HANDLER_COUNT = getArgumentValue(TARGETED_HANDLER_COUNT_KEY, 3)
 
-# Internal
-CYCLE_DURATION = 15 # seconds
-TERGETED_COMMAND_HANDLER_NAME = "targeted-handler"
+SETUP_STRING = "Targeted handler count: {}".format(TARGETED_HANDLER_COUNT)
+## Internal
+SENDER_COUNT           = 1
+HANDLER_COUNT          = 1
+PAUSE_BETWEEN_CONNECTS = 400
+
+MESSAGE_SIZE           = 0
+PAUSE_BETWEEN_MESSAGES = 500
+MESSAGE_COUNT          = 20
+
+TARGETED_PROCESS_NAME = "targeted-handler"
+
+# Run
+CYCLE_COUNT    = getArgumentValue(CYCLE_COUNT_KEY, 1)
+CYCLE_DURATION = getArgumentValue(CYCLE_DURATION_KEY, MESSAGE_COUNT * PAUSE_BETWEEN_MESSAGES + 2000)
+
+#===================================================================================================
+# Tokens
+#===================================================================================================
+
+SENDER_TOKENS = {
+                 SIZE_TOKEN:             MESSAGE_SIZE,
+                 DURATION_TOKEN:         PAUSE_BETWEEN_MESSAGES,
+                 REPEAT_TOKEN:           MESSAGE_COUNT,
+                 TARGETED_PROCESS_TOKEN: TARGETED_PROCESS_NAME,
+                }
 
 #===================================================================================================
 # Evaluation
@@ -32,10 +53,10 @@ class DirectCommandEvaluator(TestEvaluator):
     def evaluate(self):
         if self.noErrorOccured():
             self.checkAllUnexpectedMessages()
-            handlers = self.test_process_results[TERGETED_COMMAND_HANDLER_NAME]
+            handlers = self.test_process_results[TARGETED_PROCESS_NAME]
             if self.hasRegisteredSomething(handlers):
-                sender = self.test_process_results[COMMAND_SANDER][0]
-                return self.isConsistent(sender, handlers)
+                sender = self.test_process_results[DIRECT_COMMAND_SANDER][0]
+                return self.areConsistent(sender, handlers)
         return False
 
 #===================================================================================================
@@ -43,12 +64,14 @@ class DirectCommandEvaluator(TestEvaluator):
 #===================================================================================================
 
 if __name__ == "__main__":
-    runner = TestRunner()
+    runner    = TestRunner(setup_string=SETUP_STRING)
     evaluator = DirectCommandEvaluator()
 
     runner.addTestProcess(COMMAND_HANDLER)
     runner.addTestProcess(COMMAND_HANDLER,
-                          name=TERGETED_COMMAND_HANDLER_NAME,
-                          count=TARGETED_HANDLER_COUNT)
+                          name=TARGETED_PROCESS_NAME,
+                          count=TARGETED_HANDLER_COUNT,
+                          pause=PAUSE_BETWEEN_CONNECTS)
+    runner.addTestProcess(DIRECT_COMMAND_SANDER, tokens=SENDER_TOKENS)
 
     runner.runTest(evaluator, CYCLE_DURATION, CYCLE_COUNT)

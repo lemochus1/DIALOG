@@ -1451,7 +1451,7 @@ bool Server::isProcessConnectedToControlServer(QString key)
     return connected;
 }
 
-void Server::waitForConnectionToControlServer(int sTimeout)
+bool Server::waitForConnectionToControlServer(int sTimeout)
 {
     if (!isConnectedToControlServer()) {
         QTimer timer;
@@ -1462,6 +1462,7 @@ void Server::waitForConnectionToControlServer(int sTimeout)
         timer.start(sTimeout * 1000);
         loop.exec();
     }
+    return isConnectedToControlServer();
 }
 
 Server::~Server()

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <process name="procedure-caller">
     <control-server address="127.0.0.1" port="8081"/>
-    <send repeat="5" duration="1">
+    <send repeat="{REPEAT}" duration="{DURATION}" size="{SIZE}">
         <procedure>Procedure</procedure>
     </send>
 </process>

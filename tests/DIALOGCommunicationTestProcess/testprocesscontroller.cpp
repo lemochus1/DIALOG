@@ -6,7 +6,7 @@
 const QString PROCESS_ELEMENT = "process";
 const QString CONTROL_SERVER_ELEMENT = "control-server";
 const QString REGISTER_ELEMENT = "register";
-const QString REQUIRE_ELEMENT = "require";
+const QString REQUEST_ELEMENT = "request";
 const QString SEND_ELEMENT = "send";
 const QString COMMAND_ELEMENT = "command";
 const QString DIRECT_COMMAND_ELEMENT = "direct-command";
@@ -16,6 +16,7 @@ const QString SERVICE_ELEMENT = "service";
 const QString NAME_ATTRIBUTE = "name";
 const QString DURATION_ATTRIBUTE = "duration";
 const QString REPEAT_ATTRIBUTE = "repeat";
+const QString SIZE_ATTRIBUTE = "size";
 const QString PORT_ATTRIBUTE = "port";
 const QString ADDRESS_ATTRIBUTE = "address";
 const QString PROCESS_ATTRIBUTE = "process";
@@ -77,8 +78,8 @@ bool TESTProcessController::readConfig(QXmlStreamReader &reader)
             if(!readRegisterElement(reader)) {
                 return false;
             }
-        } else if (REQUIRE_ELEMENT == elementName) {
-            if(!readRequireElement(reader)) {
+        } else if (REQUEST_ELEMENT == elementName) {
+            if(!readRequestElement(reader)) {
                 return false;
             }
         } else if (SEND_ELEMENT == elementName) {
@@ -87,7 +88,7 @@ bool TESTProcessController::readConfig(QXmlStreamReader &reader)
             }
         } else {
             //Chci logovat chyby, ale ne takhle...
-            qDebug() << "Unkown element '" << elementName << "' parsed in config file.";
+            qDebug() << "Unkown element" << elementName << "parsed in config file.";
         }
     }
     if (reader.hasError()) {
@@ -158,7 +159,9 @@ bool TESTProcessController::readRegisterElement(QXmlStreamReader &reader)
             APIMessageLogger::getInstance().logCommandRegistered(elementText);
         } else if (SERVICE_ELEMENT == elementName) {
             int duration = tryGetIntAttribute(DURATION_ATTRIBUTE, attributes, 1);
-            TESTServicePublisher* publisher = new TESTServicePublisher(elementText, process->getName(), duration);
+            int repeat = tryGetIntAttribute(REPEAT_ATTRIBUTE, attributes, 100);
+            int size = tryGetIntAttribute(SIZE_ATTRIBUTE, attributes, 0);
+            TESTServicePublisher* publisher = new TESTServicePublisher(elementText, process->getName(), duration, repeat, size);
             process->registerService(publisher);
             servicePublishers.append(publisher);
             APIMessageLogger::getInstance().logServiceRegistered(elementText);
@@ -169,15 +172,15 @@ bool TESTProcessController::readRegisterElement(QXmlStreamReader &reader)
             procedureHandlers.append(handler);
             APIMessageLogger::getInstance().logProcedureRegistered(elementText);
         } else {
-            qDebug() << "Unkown element '" << elementName << "' parsed in Register element.";
+            qDebug() << "Unkown element" << elementName << "parsed in Register element.";
         }
     }
     return true;
 }
 
-bool TESTProcessController::readRequireElement(QXmlStreamReader &reader)
+bool TESTProcessController::readRequestElement(QXmlStreamReader &reader)
 {
-    while(!(reader.readNext() == QXmlStreamReader::EndElement && reader.name() == REQUIRE_ELEMENT)) {
+    while(!(reader.readNext() == QXmlStreamReader::EndElement && reader.name() == REQUEST_ELEMENT)) {
         if (reader.tokenType() != QXmlStreamReader::StartElement) {
             continue;
         }
@@ -194,7 +197,7 @@ bool TESTProcessController::readRequireElement(QXmlStreamReader &reader)
             serviceSubscribers.append(subscriber);
             APIMessageLogger::getInstance().logServiceRequested(elementText);
         } else {
-            qDebug() << "Unkown element '" << reader.name() << "' parsed in Require element.";
+            qDebug() << "Unkown element" << reader.name() << "parsed in Require element.";
         }
     }
     return true;
@@ -206,6 +209,7 @@ bool TESTProcessController::readSendElement(QXmlStreamReader &reader)
 
     int repeat = tryGetIntAttribute(REPEAT_ATTRIBUTE, attributes, 1);
     int duration = tryGetIntAttribute(DURATION_ATTRIBUTE, attributes, 1);
+    int size = tryGetIntAttribute(SIZE_ATTRIBUTE, attributes, 0);
 
     while(!(reader.readNext() == QXmlStreamReader::EndElement && reader.name() == SEND_ELEMENT)) {
         if (reader.tokenType() != QXmlStreamReader::StartElement) {
@@ -220,10 +224,12 @@ bool TESTProcessController::readSendElement(QXmlStreamReader &reader)
         }
 
         if (COMMAND_ELEMENT == elementName) {
-            TESTCommandSender* sender = new TESTCommandSender(elementText, process, duration, repeat);
+            TESTCommandSender* sender = new TESTCommandSender(elementText, process, duration,
+                                                              repeat, size);
             commandSenders.append(sender);
         } else if (DIRECT_COMMAND_ELEMENT == elementName) {
-            TESTCommandSender* sender = new TESTCommandSender(elementText, process, duration, repeat);
+            TESTCommandSender* sender = new TESTCommandSender(elementText, process, duration,
+                                                              repeat, size);
             if (attributes.hasAttribute(PORT_ATTRIBUTE) && attributes.hasAttribute(ADDRESS_ATTRIBUTE)){
                 int port = tryGetIntAttribute(PORT_ATTRIBUTE, attributes, 8081);
                 QString address = attributes.value(ADDRESS_ATTRIBUTE).toString();
@@ -232,7 +238,7 @@ bool TESTProcessController::readSendElement(QXmlStreamReader &reader)
                 sender->setTargetAddress(attributes.value(PROCESS_ATTRIBUTE).toString());
             } else {
                 delete sender;
-                qDebug() << "Unkown element '" << elementName << "' parsed in Send element.";
+                qDebug() << "Unkown element" << elementName << "parsed in Send element.";
                 return false;
             }
             commandSenders.append(sender);
@@ -241,7 +247,7 @@ bool TESTProcessController::readSendElement(QXmlStreamReader &reader)
             TESTProcedureCallController* caller = new TESTProcedureCallController(elementText, process, "", duration, repeat);
             procedureCallers[elementText] = caller;
         } else {
-            qDebug() << "Unkown element '" << elementName << "' parsed in Send element.";
+            qDebug() << "Unkown element" << elementName << "parsed in Send element.";
         }
     }
     return true;

@@ -9,6 +9,7 @@ TESTServiceSubscriber::TESTServiceSubscriber(QString name)
 void TESTServiceSubscriber::dataUpdatedSlot(QByteArray dataInit)
 {
     data = dataInit;
-    APIMessageLogger::getInstance().logServiceDataReceived(getName(), dataInit);
-    std::cout << "Service data received: " << getName().toStdString() << " - " << dataInit.toStdString() << std::endl;
+    QString asString = APIMessageLogger::getInstance().getMessageLogString(dataInit);
+    std::cout << "Service data received: " << getName().toStdString() <<" - "<< asString.toStdString() << std::endl;
+    APIMessageLogger::getInstance().logServiceDataReceived(getName(), asString);
 }

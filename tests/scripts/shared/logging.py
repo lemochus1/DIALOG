@@ -1,7 +1,9 @@
 import os
+
 from datetime import datetime
 
-from support.utils.define import *
+from define.logs import *
+from define.files import *
 
 #===================================================================================================
 # Class TestLogger
@@ -36,19 +38,32 @@ class TestLogger:
                 file_object.write(self.__getTimeString() + message + "\n")
                 file_object.write(LOG_SEPARATOR)
 
+    def logSeparator(self):
+        with open(self.default_log_path, 'a') as file_object:
+            file_object.write(LOG_SEPARATOR)
+
     def logEvaluationStart(self):
         with open(self.default_log_path, 'a') as file_object:
             file_object.write(LOG_SEPARATOR)
             file_object.write(self.__getTimeString() + "Evaluation started!\n")
             file_object.write(LOG_SEPARATOR)
 
-    def logAndPrint(self, message, tab=False):
-        self.logMessage(message)
-        if tab:
-            print(TAB + message)
-        else:
-            print(message)
+    def logAndPrintTestStarted(self, name, params_string=""):
+        print(TERMINAL_SEPARATOR)
+        self.logSeparator()
+        self.logAndPrint(name)
 
-    def logAndPrintList(self, messages, tab=False):
+        if params_string:
+            self.logAndPrint("Params: " + params_string, 1)
+        self.logSeparator()
+
+    def logAndPrint(self, message, tab_count=0):
+        prefix = ""
+        for i in range(tab_count):
+            prefix += TAB
+        self.logMessage(message)
+        print(prefix + message)
+
+    def logAndPrintList(self, messages, tab_count=0):
         for message in messages:
-            self.logAndPrint(message, tab)
+            self.logAndPrint(message, tab_count)

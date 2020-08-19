@@ -32,6 +32,9 @@ public:
     void logProcedureDataReceived(const QString& name, const QString& message);
     void logProcedureCallReceived(const QString& name, const QString& message);
 
+    QString getMessageLogString(const QByteArray& message);
+    QString generateRandomString(int size);
+
 private:
     APIMessageLogger();
 

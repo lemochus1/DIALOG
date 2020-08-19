@@ -31,13 +31,13 @@ void myMessageHandler(QtMsgType type, const QMessageLogContext &context, const Q
     QString txt;
     switch (type) {
     case QtWarningMsg:
-        txt = timestamp + QString("WARNING: %1").arg(msg);
+        txt = timestamp + QString("  WARNING: %1").arg(msg);
         break;
     case QtCriticalMsg:
-        txt = timestamp + QString("CRITICAL: %1").arg(msg);
+        txt = timestamp + QString("  CRITICAL: %1").arg(msg);
         break;
     case QtFatalMsg:
-        txt = timestamp + QString("FATAL: %1").arg(msg);
+        txt = timestamp + QString("  FATAL: %1").arg(msg);
         break;
     default:
         txt = msg;

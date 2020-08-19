@@ -1,4 +1,5 @@
-import glob
 import os
 
-os.system('python3 run-all.py basic')
+
+if __name__ == "__main__":
+    os.system('python3 run-all.py basic')

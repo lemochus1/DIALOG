@@ -10,7 +10,8 @@ class TESTCommandSender : public QObject
     Q_OBJECT
 
 public:
-    TESTCommandSender(QString nameInit, DIALOGProcess* processInit, int pauseInit = 1, int repeatInit = 1);
+    TESTCommandSender(QString nameInit, DIALOGProcess* processInit, int pauseInit = 1,
+                      int repeatInit = 1, int messageSizeInit = 0);
 
     void setTargetAddress(QString processNameInit);
     void setTargetAddress(QString addressInit, int portInit);
@@ -37,6 +38,7 @@ private:
 
     int repeat;
     int pause;
+    int size;
 
     int sendCounter;
     QMutex mutex;

@@ -9,24 +9,36 @@ from shared.evaluating import *
 #===================================================================================================
 
 # Test
-## Public
-PROCESS_COUNT             = getArgumentValue(PROCESS_COUNT_KEY, 5)
-PAUSE_BETWEEN_CONNECTS    = getArgumentValue(PAUSE_BETWEEN_CONNECTS_KEY, 100)
+SENDER_COUNT           = 1
+HANDLER_COUNT          = 1
+PAUSE_BETWEEN_CONNECTS = 400
 
-SETUP_STRING = "Process count: {}, Connects pause: {}ms".format(PROCESS_COUNT,
-                                                                PAUSE_BETWEEN_CONNECTS)
-## Internal
-PROCESS_NAME   = DUMMY_PROCESS
+MESSAGE_SIZE           = 0
+PAUSE_BETWEEN_MESSAGES = 500
+MESSAGE_COUNT          = 20
+
+TARGETED_PROCESS_NAME = "targeted-handler"
 
 # Run
-CYCLE_COUNT    = getArgumentValue(CYCLE_COUNT_KEY, 5)
-CYCLE_DURATION = getArgumentValue(CYCLE_DURATION_KEY, 6000)
+CYCLE_COUNT    = getArgumentValue(CYCLE_COUNT_KEY, 1)
+CYCLE_DURATION = getArgumentValue(CYCLE_DURATION_KEY, 10000)
+
+#===================================================================================================
+# Tokens
+#===================================================================================================
+
+SENDER_TOKENS = {
+                 SIZE_TOKEN:             MESSAGE_SIZE,
+                 DURATION_TOKEN:         PAUSE_BETWEEN_MESSAGES,
+                 REPEAT_TOKEN:           MESSAGE_COUNT,
+                 TARGETED_PROCESS_TOKEN: TARGETED_PROCESS_NAME,
+                }
 
 #===================================================================================================
 # Evaluation
 #===================================================================================================
 
-class ConnectEvaluator(TestEvaluator):
+class DirectCommandEvaluator(TestEvaluator):
     def __init__(self):
         pass
 
@@ -36,7 +48,6 @@ class ConnectEvaluator(TestEvaluator):
     def evaluate(self):
         if self.noErrorOccured():
             self.checkAllUnexpectedMessages()
-            return True
         return False
 
 #===================================================================================================
@@ -44,8 +55,9 @@ class ConnectEvaluator(TestEvaluator):
 #===================================================================================================
 
 if __name__ == "__main__":
-    runner    = TestRunner(setup_string=SETUP_STRING)
-    evaluator = ConnectEvaluator()
+    runner    = TestRunner()
+    evaluator = DirectCommandEvaluator()
 
-    runner.addTestProcess(PROCESS_NAME, pause=PAUSE_BETWEEN_CONNECTS, count=PROCESS_COUNT)
+    runner.addTestProcess(DIRECT_COMMAND_SANDER, tokens=SENDER_TOKENS)
+
     runner.runTest(evaluator, CYCLE_DURATION, CYCLE_COUNT)

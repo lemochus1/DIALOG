@@ -15,7 +15,11 @@ class Procedure;
 class Process
 {
 public:
-    explicit Process(QString processAddressInit, quint16 processPortInit, ProcessType processTypeInit = Custom, QString processNameInit = "", quint64 processPIDInit = 0);
+    explicit Process(QString processAddressInit,
+                     quint16 processPortInit,
+                     ProcessType processTypeInit = Custom,
+                     QString processNameInit = "",
+                     quint64 processPIDInit = 0);
     ~Process();
     // server a az api
     bool addServiceAsSender(Service* service);

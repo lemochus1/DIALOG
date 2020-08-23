@@ -29,13 +29,15 @@ void TcpServer::sessionOpened(quint16 receiverPortInit)
     setMaxPendingConnections(MAXIMUM_OF_PENDING_RECEIVER_CONNECTIONS);
 
     if (!listen(QHostAddress::Any, receiverPortInit)) {
-        qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Unable to start the server: " << errorString();
+        DIALOGCommon::logMessage("Unable to start the server: " + errorString());
 
         return;
     }
     receiverPort = serverPort();
 
-    qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "The server is running on IP: " << receiverAddress << ", port: " << receiverPort;
+    DIALOGCommon::logMessage(QString("The server is running on IP: %1, port: %2.")
+                             .arg(receiverAddress)
+                             .arg(receiverPort));
 }
 
 void TcpServer::incomingConnection(qintptr socketDescriptor)

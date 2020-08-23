@@ -42,11 +42,16 @@ class TestRunner:
         self.cycle_index = 0
         self.cycle_count = 0
 
-        self.result_folder = os.path.join(TEST_RESULTS_FOLDER, self.name.replace(SCRIPT_SUFFIX, ""))
+        self.result_folder = os.path.join(TEST_RESULTS_FOLDER,
+                                          self.name.replace(SCRIPT_SUFFIX, ""))
+
+        if not os.path.exists(TEST_RESULTS_FOLDER):
+            os.mkdir(TEST_RESULTS_FOLDER)
         if not os.path.exists(self.result_folder):
             os.mkdir(self.result_folder)
 
-        self.control_server_log_path = os.path.join(self.result_folder, CONTROL_SERVER + LOG_SUFFIX)
+        self.control_server_log_path = os.path.join(self.result_folder,
+                                                    CONTROL_SERVER + LOG_SUFFIX)
         self.kill_control_server = True
 
     def __getProcessStartedMessage(self):
@@ -59,6 +64,7 @@ class TestRunner:
         self.opened_terminals = 0
 
         self.test_process_names             = list()
+        self.test_process_objects           = dict()
         self.test_process_after_start_pause = list()
         self.test_process_log_paths         = list()
         self.test_process_arguments         = list()
@@ -70,18 +76,18 @@ class TestRunner:
     def startControlServer(self):
         self.kill_control_server = not isProcessRunning(CONTROL_SERVER_NAME)
         if self.kill_control_server:
-            runProcessNewTerminal(CONTROL_SERVER_PATH, self.control_server_log_path,
-                                  self.opened_terminals)
+            runProcessNewTerminal(CONTROL_SERVER_PATH, self.control_server_log_path, 0)
             self.logger.logSeparatedMessage(self.__getProcessStartedMessage(),
                                             self.control_server_log_path)
 
         self.opened_terminals+=1
 
-    def setup(self, pause=0.5):
+    def setup(self, pause=0.5, control_start=True):
         self.install_dialog()
 
         self.opened_terminals = 0
-        self.startControlServer()
+        if control_start:
+            self.startControlServer()
         time.sleep(pause)
 
     @staticmethod
@@ -147,9 +153,10 @@ class TestRunner:
             runProcessBackground(TEST_PROCESS_PATH,
                                 self.test_process_arguments[index])
         else:
-            runProcessNewTerminal(TEST_PROCESS_PATH,
-                                  self.test_process_arguments[index],
-                                  self.opened_terminals)
+            process_object = runProcessNewTerminal(TEST_PROCESS_PATH,
+                                                   self.test_process_arguments[index],
+                                                   self.opened_terminals)
+            self.test_process_objects[self.test_process_names[index]] = process_object
             self.opened_terminals += 1
 
         time.sleep(self.test_process_after_start_pause[index]/1000)
@@ -163,18 +170,30 @@ class TestRunner:
         for index in range(first_new_process_index, process_count):
             self.__runTestProcess(index)
 
+    def killControlServer(self):
+        if self.kill_control_server:
+            killProcessName(CONTROL_SERVER_NAME)
+            self.logger.logMessage(KILLED_MESSAGE, self.control_server_log_path)
+
+    def killTestProcess(self, name):
+        if name in self.test_process_objects:
+            # This hack kills the firstly started test process as the proper way based on
+            # test_process_objects does not work because the precesses are running
+            # in their own gnom-terminals. This is good enough for service-crash-test.py
+            killProcessPid(getProcessPid(TEST_PROCESS_NAME)[-1])
+        else:
+            print("No running process named {}".format(name))
+
     def killAll(self, passed=True):
         wait = getArgumentValue(WAIT_KEY, False, type=bool)
         if wait or not passed:
             input("Press enter to continue...")
 
         killProcessName(TEST_PROCESS_NAME)
+        self.killControlServer()
+
         for log_path in self.test_process_log_paths:
             self.logger.logMessage(KILLED_MESSAGE, log_path)
-
-        if self.kill_control_server:
-            killProcessName(CONTROL_SERVER_NAME)
-            self.logger.logMessage(KILLED_MESSAGE, self.control_server_log_path)
 
     def getRunLogPrexif(self):
         message = ""
@@ -208,30 +227,36 @@ class TestRunner:
         result_object = TestProcessResult(self.control_server_log_path, self.name)
         return result_object
 
-    def runTest(self, evaluator = None, cycle_duration=10000, cycle_count=1):
+    def evaluate(self, evaluator):
+        evaluator.setProcessResults(self.getTestProcessResults(),
+                                    self.getControlServerResult())
+        evaluator.setupProcessResults()
+        # Reading logs before killing the processes saves a log parsing troubles.
+        evaluator.readAllLogs()
+        passed = evaluator.evaluate()
+        if passed:
+            self.logger.logAndPrint(PASSED_MESSAGE, 1)
+        else:
+            self.logger.logAndPrint(FAILED_MESSAGE, 1)
+        self.killAll(passed)
+        return passed
+
+    def runTest(self, evaluator = None,
+                cycle_duration=10000, cycle_count=1,
+                start_control_server=True):
         self.cycle_count = cycle_count
 
         self.logger.logAndPrintTestStarted(self.name, self.setup_string)
 
         for run_index in range(self.cycle_count):
             self.cycle_index = run_index
-            self.setup()
+            self.setup(control_start=start_control_server)
             for process_index in range(len(self.test_process_names)):
                 self.__runTestProcess(process_index)
             self.waitWhileTesting(cycle_duration)
             if evaluator is not None:
                 evaluator.setLogger(self.logger)
-                evaluator.setProcessResults(self.getTestProcessResults(),
-                                            self.getControlServerResult())
-                evaluator.setupProcessResults()
-                # Reading logs before killing the processes saves a lot of troubles.
-                evaluator.readAllLogs()
-                passed = evaluator.evaluate()
-                if passed:
-                    self.logger.logAndPrint(PASSED_MESSAGE, 1)
-                else:
-                    self.logger.logAndPrint(FAILED_MESSAGE, 1)
-                self.killAll(passed)
+                self.evaluate(evaluator)
             else:
                  self.logger.logAndPrint(NO_EVALUATION_MESSAGE, 1)
                  self.killAll()

@@ -9,24 +9,31 @@ from shared.evaluating import *
 #===================================================================================================
 
 # Test
-## Public
-PROCESS_COUNT             = getArgumentValue(PROCESS_COUNT_KEY, 5)
-PAUSE_BETWEEN_CONNECTS    = getArgumentValue(PAUSE_BETWEEN_CONNECTS_KEY, 100)
+MESSAGE_SIZE           = 0
+PAUSE_BETWEEN_MESSAGES = 500
+MESSAGE_COUNT          = 20
 
-SETUP_STRING = "Process count: {}, Connects pause: {}ms".format(PROCESS_COUNT,
-                                                                PAUSE_BETWEEN_CONNECTS)
-## Internal
-PROCESS_NAME   = DUMMY_PROCESS
+PROCESS_NAMES = [SERVICE_PROVIDER, SERVICE_SUBSCRIBER, COMMAND_SANDER, PROCEDURE_CALLER]
 
 # Run
-CYCLE_COUNT    = getArgumentValue(CYCLE_COUNT_KEY, 5)
-CYCLE_DURATION = getArgumentValue(CYCLE_DURATION_KEY, 6000)
+CYCLE_COUNT    = getArgumentValue(CYCLE_COUNT_KEY, 1)
+CYCLE_DURATION = getArgumentValue(CYCLE_DURATION_KEY, 4000)
+
+#===================================================================================================
+# Tokens
+#===================================================================================================
+
+SENDER_TOKENS = {
+                 SIZE_TOKEN:     MESSAGE_SIZE,
+                 DURATION_TOKEN: PAUSE_BETWEEN_MESSAGES,
+                 REPEAT_TOKEN:   MESSAGE_COUNT,
+                }
 
 #===================================================================================================
 # Evaluation
 #===================================================================================================
 
-class ConnectEvaluator(TestEvaluator):
+class ConnectMissEvaluator(TestEvaluator):
     def __init__(self):
         pass
 
@@ -44,8 +51,9 @@ class ConnectEvaluator(TestEvaluator):
 #===================================================================================================
 
 if __name__ == "__main__":
-    runner    = TestRunner(setup_string=SETUP_STRING)
-    evaluator = ConnectEvaluator()
+    runner    = TestRunner()
+    evaluator = ConnectMissEvaluator()
 
-    runner.addTestProcess(PROCESS_NAME, pause=PAUSE_BETWEEN_CONNECTS, count=PROCESS_COUNT)
-    runner.runTest(evaluator, CYCLE_DURATION, CYCLE_COUNT)
+    for process_name in PROCESS_NAMES:
+        runner.addTestProcess(process_name, tokens=SENDER_TOKENS)
+    runner.runTest(evaluator, CYCLE_DURATION, CYCLE_COUNT, start_control_server=False)

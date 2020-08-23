@@ -11,7 +11,7 @@ from shared.evaluating import *
 
 # Test
 ## Public
-PAUSE_BETWEEN_CONNECTS    = getArgumentValue(PAUSE_BETWEEN_CONNECTS_KEY, 100)
+PAUSE_BETWEEN_CONNECTS = getArgumentValue(PAUSE_BETWEEN_CONNECTS_KEY, 100)
 
 SETUP_STRING = "Connects pause: {}ms".format(PAUSE_BETWEEN_CONNECTS)
 ## Internal

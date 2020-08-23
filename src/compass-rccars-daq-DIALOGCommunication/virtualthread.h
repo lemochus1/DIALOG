@@ -32,6 +32,8 @@ Q_SIGNALS:
     void sendProcedureCallMessageSignal(QString procedureName, QByteArray* message);
     void sendProcedureReturnMessageSignal(QString commandName, QByteArray* message, QString url, int port);
 
+    void notConnectedToControlServerErrorSignal(QString messageType, QString messageName);
+
 private:
     QThread* mainThread;
 };

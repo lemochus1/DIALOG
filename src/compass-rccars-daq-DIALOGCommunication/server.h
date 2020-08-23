@@ -1,4 +1,4 @@
-#ifndef SERVER_H
+﻿#ifndef SERVER_H
 #define SERVER_H
 
 #include "sender.h"
@@ -27,12 +27,71 @@ class Server : public QThread
 
     bool hasProcessDependencies(Process* process);
     void lostControlServer(QString errorProcessAddress, quint16 errorProcessPort);
-    bool isConnectedToControlServer();
     bool isProcessConnectedToControlServer(QString key);
 
+//  Custom Server
+    void successfullyConnected();
+    void connectionLost();
+    void infoService(const QStringList &messageList);
+    void subscribeService(const QString &senderKey, const QStringList &messageList);
+    void unsubscribeService(const QStringList &messageList);
+    void lostSender(const QStringList &messageList);
+    void lostReceiver(const QStringList &messageList);
+
+//  Control Server
+    void connectRequest(const QString& senderAddress,
+                        quint16 senderPort,
+                        const QString& senderKey,
+                        const QStringList &messageList);
+    void registerService(const QString& senderAddress,
+                         quint16 senderPort,
+                         Process *sender,
+                         const QStringList &messageList);
+    void requestService(const QString& senderAddress,
+                        quint16 senderPort,
+                        Process *sender,
+                        const QStringList &messageList);
+    void unsubscribeService(const QString& senderAddress,
+                            quint16 senderPort,
+                            Process *sender,
+                            const QStringList &messageList);
+    void listOfServices(const QString& senderAddress,
+                        quint16 senderPort,
+                        const QStringList headerList);
+    void registerCommand(const QString& senderAddress,
+                         quint16 senderPort,
+                         Process *sender,
+                         const QStringList &messageList);
+    void unregisterCommand(const QString& senderAddress,
+                           quint16 senderPort,
+                           Process *sender,
+                           const QStringList &messageList);
+    void commandMessage(const QStringList &headerList, QByteArray* message);
+    void registerProcesure(const QString& senderAddress,
+                           quint16 senderPort,
+                           Process *sender,
+                           const QStringList &messageList);
+    void unregisterProcedure(const QString& senderAddress,
+                             quint16 senderPort,
+                             Process *sender,
+                             const QStringList &messageList);
+    void procedureMessage(const QString& senderAddress,
+                          quint16 senderPort,
+                          const QStringList &headerList,
+                          QByteArray* message);
+    void unknownMessage(const QString& senderAddress,
+                        quint16 senderPort,
+                        QByteArray* header,
+                        QByteArray* message);
+
 public:
-    Server();
-    Server(QString serverNameInit, ProcessType processTypeInit, QString controlServerAddressInit, quint16 controlServerPortInit, VirtualThread* senderThreadInit = NULL, VirtualThread* receiverThreadInit = NULL);
+    Server(){}
+    Server(QString serverNameInit,
+           ProcessType processTypeInit,
+           QString controlServerAddressInit,
+           quint16 controlServerPortInit,
+           VirtualThread* senderThreadInit = NULL,
+           VirtualThread* receiverThreadInit = NULL);
     ~Server();
     void run();
     void stop();//Asi nikde
@@ -54,7 +113,8 @@ public:
     QMutex processLock;// casto se pouziva v socketu...
 
     /// Waits for signal successfullyConnectedToControlServer or timeout
-    bool waitForConnectionToControlServer(int sTimeout = 5);
+    bool waitForConnectionToControlServer(int sTimeout = 10);
+    bool isConnectedToControlServer();
 
 public Q_SLOTS:
     //Napojuje se na to socket...
@@ -80,7 +140,7 @@ public Q_SLOTS:
 
 
     //asi klidne private
-    void serverErrorSlot(QString error);
+    void serverErrorSlot(const QString &error);
     // asi klidne private
     void sendHeartBeatSlot();
     //asi klidne private

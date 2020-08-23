@@ -1,6 +1,9 @@
 #ifndef DIALOGAPI_H
 #define DIALOGAPI_H
+
 #include <QObject>
+#include <QHostInfo>
+
 #include "server.h"
 #include "define.h"
 
@@ -11,19 +14,43 @@ class DIALOGCommand;
 class DIALOGProcedureCaller;
 class DIALOGProcedureHandler;
 
+struct ProcessAddress
+{
+    QString hostName;
+    quint16 port;
+    QHostAddress address;
+
+    ProcessAddress(const QString& hostNameInit = "", quint16 portInit = 0)
+        : hostName(hostNameInit),
+        port(portInit)
+    {
+        address = getAddress(hostNameInit);
+    }
+
+private:
+    QHostAddress getAddress(const QString hostName)
+    {
+        QHostInfo info = QHostInfo::fromName(hostName);
+        if (info.addresses().isEmpty()){
+            return QHostAddress();
+        }
+        return info.addresses().first();
+    }
+};
+
 class DIALOGProcess : public QObject
 {
     Q_OBJECT
 
     class ReceiverThread;
-    class SenderThread;    
+    class SenderThread;
 
 public:
-    explicit DIALOGProcess(QString nameInit, QObject* parent=nullptr);
+    explicit DIALOGProcess(const QString& name, QObject* parent=nullptr);
     virtual ~DIALOGProcess();
 
     void start(QThread::Priority priority = QThread::NormalPriority);
-    void setControlServerAdress(QString url, int port);
+    void setControlServerAdress(QString address, int port);
 
     QString getName() const;
     
@@ -64,7 +91,9 @@ private:
     ReceiverThread* receiver;
 
     QString name;
-    QString controlServerUrl;
+
+    ProcessAddress controlServer;
+    QString controlServerAddress;
     int controlServerPort;
 };
 

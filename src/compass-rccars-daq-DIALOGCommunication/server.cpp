@@ -1,13 +1,683 @@
-#include "server.h"
+﻿#include "server.h"
 #include <QRegularExpression>
 #include <unistd.h>
 
-Server::Server()
+void Server::infoService(const QStringList& messageList)
 {
+
+    if(services.contains(messageList[0]))
+    {
+        if(services[messageList[0]]->sender == NULL)
+        {
+            if (messageList[1] != "unknown")
+            {
+                Service* service = services[messageList[0]];
+                QString senderProcessKey = messageList[1] + SEPARATOR + messageList[2];
+                if(isProcessKnown(senderProcessKey))
+                {
+                    service->addSender(getProcess(senderProcessKey));
+                    getProcess(senderProcessKey)->addServiceAsSender(service);
+                }
+                else
+                {
+                    Process* senderProcess = new Process(messageList[1],
+                                                         messageList[2].toUShort(),
+                                                         Custom);
+
+                    addProcess(senderProcessKey, senderProcess);
+                    service->addSender(senderProcess);
+                    senderProcess->addServiceAsSender(service);
+                }
+
+                subscribeServiceSlot(messageList[0]);
+            }
+            else
+            {
+                DIALOGCommon::logMessage(QString("CommunicationControlServer does not know "
+                                                 "the sender of service %1.")
+                                         .arg(QString(messageList[0])));
+            }
+        }
+        else
+            DIALOGCommon::logMessage(QString("Service is already known.")
+                                     .arg(QString(messageList[0])));
+    }
+    else
+        DIALOGCommon::logMessage(QString("Service is not known on the server.").arg(QString(messageList[0])));
+}
+
+void Server::subscribeService(const QString& senderKey, const QStringList &messageList)
+{
+    if(services.contains(messageList[0]))
+    {
+        bool alreadySubscribed = false;
+        if(isProcessKnown(senderKey))
+        {
+            alreadySubscribed = !services[messageList[0]]->addReceiver(getProcess(senderKey));
+            getProcess(senderKey)->addServiceAsReceiver(services[messageList[0]]);
+        }
+        else
+        {
+            Process* receiverProcess = getProcess(senderKey);
+            receiverProcess->processType = static_cast<ProcessType>(messageList[1].toInt());
+            alreadySubscribed = !services[messageList[0]]->addReceiver(receiverProcess);
+            getProcess(senderKey)->addServiceAsReceiver(services[messageList[0]]);
+        }
+        if(!alreadySubscribed)
+            DIALOGCommon::logMessage(QString("Service %1 has been subscribed by (%2)")
+                                     .arg(messageList[0]).arg(senderKey));
+        else
+            DIALOGCommon::logMessage(QString("Service %1 has already been subscribed by (%2)")
+                                     .arg(messageList[0]).arg(senderKey));
+    }
+    else
+        DIALOGCommon::logMessage(QString("Service %1 is not provided on the server.")
+                                 .arg(messageList[0]));
+}
+
+void Server::unsubscribeService(const QStringList &messageList)
+{
+    QString receiverKey = messageList[1] + SEPARATOR + messageList[2];
+    if(services.contains(messageList[0]))
+    {
+        Service* service = services[messageList[0]];
+        if(isProcessKnown(receiverKey))
+        {
+            Process* receiverProcess = getProcess(receiverKey);
+            if(service->sender == serverProcess)
+            {
+                receiverProcess->removeServiceAsReceiver(service);
+                service->removeReceiver(receiverProcess);
+                if(!hasProcessDependencies(receiverProcess))
+                {
+                    removeProcess(receiverProcess->processKey);
+                }
+                DIALOGCommon::logMessage(QString("Service %1 has been unsubscribed by (%2,%3).")
+                                         .arg(messageList[0])
+                                         .arg(messageList[1])
+                                         .arg(messageList[2]));
+            }
+            else
+            {
+                DIALOGCommon::logMessage(QString("This process (%1,%2) is not the "
+                                                 "sender for Service %3.")
+                                         .arg(serverProcess->processAddress)
+                                         .arg(serverProcess->processPort)
+                                         .arg(messageList[0]));
+            }
+        }
+        else
+        {
+            DIALOGCommon::logMessage(QString("Process (%1) is not known on the server.")
+                                     .arg(receiverKey));
+        }
+    }
+    else
+        DIALOGCommon::logMessage(QString("Service (%1) is not provided on the server.")
+                                 .arg(receiverKey));
+}
+
+void Server::lostSender(const QStringList &messageList)
+{
+    if(services.contains(messageList[0]))
+    {
+        Service* service = services[messageList[0]];
+        Process* serviceSender = service->sender;
+        if(serviceSender != NULL)
+        {
+            service->removeSender();
+            serviceSender->removeServiceAsSender(service);
+            if(!hasProcessDependencies(serviceSender))
+            {
+                removeProcess(serviceSender->processKey);
+            }
+            DIALOGCommon::logMessage(QString("Lost sender with service %1.").arg(messageList[0]));
+        }
+        else
+            DIALOGCommon::logMessage(QString("The sender with service %1 has not been already "
+                                             "known. It could not be deleted.")
+                                     .arg(messageList[0]));
+    }
+    else
+        DIALOGCommon::logMessage(QString("Service %1 is not known on the server.")
+                                 .arg(messageList[0]));
+}
+
+void Server::lostReceiver(const QStringList &messageList)
+{
+    foreach (Service* service, services)
+    {
+        foreach (Process* receiverProcess, service->receivers)
+        {
+            if (receiverProcess->processAddress == messageList[0] &&
+                receiverProcess->processPort == messageList[1].toUShort())
+            {
+                DIALOGCommon::logMessage(QString("Lost Receiver (%1, %2).")
+                                        .arg(messageList[0])
+                                        .arg(messageList[1]));
+
+                service->removeReceiver(receiverProcess);
+                receiverProcess->removeServiceAsReceiver(service);
+                if(!hasProcessDependencies(receiverProcess))
+                {
+                    removeProcess(receiverProcess->processKey);
+                }
+                break;
+            }
+        }
+    }
+}
+
+void Server::connectRequest(const QString &senderAddress,
+                            quint16 senderPort,
+                            const QString &senderKey,
+                            const QStringList &messageList)
+{
+    if(!isProcessConnectedToControlServer(senderKey))
+    {
+        Process* process = getProcess(senderKey);
+        process->processType = static_cast<ProcessType>(messageList[0].toInt());
+        process->processName = messageList[1];
+        process->processPID = messageList[2].toULongLong();
+        process->connectedToControlServer = true;
+        Q_EMIT sendMessageSignal(senderAddress, senderPort, messageHeader(SUCCESSFULY_CONNECTED));
+
+        if(process->processType == Custom)
+            DIALOGCommon::logMessage(QString("The process %1 (%2, %3) is successfully connected "
+                                             "to CommunicationControlServer.")
+                                     .arg(QString(messageList[1]))
+                                     .arg(senderAddress)
+                                     .arg(senderPort));
+
+        else
+            DIALOGCommon::logMessage(QString("A new Monitoring (%1, %2) is successfully connected "
+                                             "to CommunicationControlServer.")
+                                    .arg(senderAddress)
+                                    .arg(senderPort));
+
+        infoMonitoringSlot();
+    }
+    else
+    {
+        DIALOGCommon::logMessage(QString("The process %1 (%2, %3) has been already connected to"
+                                         " CommunicationControlServer.")
+                                 .arg(QString(messageList[1]))
+                                 .arg(senderAddress)
+                                 .arg(senderPort));
+    }
+    processHeartBeats[senderKey] = QDateTime::currentMSecsSinceEpoch();
+}
+
+void Server::registerService(const QString &senderAddress,
+                             quint16 senderPort,
+                             Process* sender,
+                             const QStringList &messageList)
+{
+    if(!services.contains(messageList[0]))
+    {
+        Service* service = new Service(messageList[0]);
+        service->addSender(sender);
+        sender->addServiceAsSender(service);
+        services[messageList[0]] = service;
+        DIALOGCommon::logMessage(QString("New Service %1 has been registered on "
+                                         "CommunicationControlServer.")
+                                 .arg(messageList[0]));
+        infoMonitoringSlot();
+    }
+    else
+    {
+        Service* service = services[messageList[0]];
+        if(service->sender == NULL)
+        {
+            service->addSender(sender);
+            sender->addServiceAsSender(service);
+
+            foreach(Process* receiver, service->receivers)
+            {
+                if(receiver->processType == Custom)
+                {
+                    QByteArray* infoService = new QByteArray();
+                    infoService->append(service->serviceName);
+                    infoService->append(SEPARATOR);
+                    infoService->append(service->sender->processAddress);
+                    infoService->append(SEPARATOR);
+                    infoService->append(QString::number(service->sender->processPort));
+                    Q_EMIT sendMessageSignal(receiver->processAddress,
+                                             receiver->processPort,
+                                             messageHeader(INFO_SERVICE),
+                                             infoService);
+                }
+            }
+            DIALOGCommon::logMessage(QString("New sender of service %1 has been registered on "
+                                             "CommunicationControlServer. Info about service %1 "
+                                             "has been sent.")
+                                     .arg(messageList[0]));
+            infoMonitoringSlot();
+        }
+        else
+        {
+            QByteArray* dialogError = new QByteArray();
+            dialogError->append(service->serviceName);
+
+            Q_EMIT sendMessageSignal(senderAddress,
+                                     senderPort,
+                                     messageHeader(QString(DIALOG_ERROR)
+                                                   .append(SEPARATOR)
+                                                   .append(SERVICE_DUPLICATE)),
+                                     dialogError);
+
+            DIALOGCommon::logMessage(QString("Service %1 is already registered on ControlSever.")
+                                    .arg(messageList[0]));
+        }
+    }
 
 }
 
-Server::Server(QString serverNameInit, ProcessType processTypeInit, QString controlServerAddressInit, quint16 controlServerPortInit, VirtualThread* senderThreadInit, VirtualThread* receiverThreadInit)
+void Server::requestService(const QString &senderAddress,
+                            quint16 senderPort,
+                            Process *sender,
+                            const QStringList &messageList)
+{
+    QByteArray* infoService = new QByteArray();
+    infoService->append(messageList[0]);
+    infoService->append(SEPARATOR);
+    if(services.contains(messageList[0]))
+    {
+        services[messageList[0]]->addReceiver(sender);
+        sender->addServiceAsReceiver(services[messageList[0]]);
+        Process* senderProcess = services[messageList[0]]->sender;
+        if(senderProcess != NULL)
+        {
+            infoService->append(senderProcess->processAddress);
+            infoService->append(SEPARATOR);
+            infoService->append(QString::number(senderProcess->processPort));
+            DIALOGCommon::logMessage(QString("Info about service %1 has been sent.")
+                                     .arg(messageList[0]));
+        }
+        else
+        {
+            infoService->append("unknown");
+            DIALOGCommon::logMessage(QString("Requested service %1 has no sender on ControlSever.")
+                                     .arg(messageList[0]));
+        }
+    }
+    else
+    {
+        Service* service = new Service(messageList[0]);
+        service->addReceiver(sender);
+        sender->addServiceAsReceiver(service);
+        services[messageList[0]] = service;
+
+        infoService->append("unknown");
+        DIALOGCommon::logMessage(QString("Requested service %1 has no sender on"
+                                         " CommunicationControlSever.")
+                                 .arg(messageList[0]));
+    }
+
+    Q_EMIT sendMessageSignal(senderAddress,
+                             senderPort,
+                             messageHeader(INFO_SERVICE),
+                             infoService);
+
+    if(sender->processType != Monitoring)
+        infoMonitoringSlot();
+}
+
+void Server::unsubscribeService(const QString& senderAddress,
+                                quint16 senderPort,
+                                Process *sender,
+                                const QStringList &messageList)
+{
+    if(services.contains(messageList[0]))
+    {
+        Service* service = services[messageList[0]];
+        if(sender->servicesAsReceiver.contains(service))
+        {
+            sender->removeServiceAsReceiver(service);
+            service->removeReceiver(sender);
+
+            if(service->sender != NULL)
+            {
+                QByteArray* unsubscribeService = new QByteArray();
+                unsubscribeService->append(messageList[0]);
+                unsubscribeService->append(SEPARATOR);
+                unsubscribeService->append(sender->processAddress);
+                unsubscribeService->append(SEPARATOR);
+                unsubscribeService->append(QString::number(sender->processPort));
+
+                Q_EMIT sendMessageSignal(service->sender->processAddress,
+                                         service->sender->processPort,
+                                         messageHeader(UNSUBSCRIBE_SERVICE),
+                                         unsubscribeService);
+            }
+
+            DIALOGCommon::logMessage(QString("Service %1 has been unsubscribed by (%2, %3).")
+                                     .arg(messageList[0])
+                                     .arg(senderAddress)
+                                     .arg(senderPort));
+
+            if(sender->processType != Monitoring)
+                infoMonitoringSlot();
+        }
+        else
+        {
+            DIALOGCommon::logMessage(QString("Service %1 is not subscribed by (%2, %3).")
+                                     .arg(messageList[0])
+                                     .arg(senderAddress)
+                                     .arg(senderPort));
+        }
+    }
+    else
+        DIALOGCommon::logMessage(QString("Service %1 s not provided on the "
+                                         "CommunicationControlServer.")
+                                 .arg(messageList[0]));
+}
+
+void Server::listOfServices(const QString &senderAddress,
+                            quint16 senderPort,
+                            const QStringList headerList)
+{
+    quint16 numberOfAvailableServices = 0;
+    QByteArray* listOfAvailableServices = new QByteArray();
+    bool first = true;
+    foreach(QString key, services.keys())
+    {
+        if (services[key]->sender != NULL)
+        {
+            if(key.contains(QRegularExpression(headerList[1])))
+            {
+                numberOfAvailableServices++;
+                if(!first)
+                    listOfAvailableServices->append(SEPARATOR);
+                else
+                    first = false;
+                listOfAvailableServices->append(key);
+            }
+        }
+    }
+    Q_EMIT sendMessageSignal(senderAddress,
+                             senderPort,
+                             messageHeader(headerList.join(SEPARATOR)),
+                             listOfAvailableServices);
+}
+
+void Server::registerCommand(const QString &senderAddress,
+                             quint16 senderPort,
+                             Process *sender,
+                             const QStringList &messageList)
+{
+    if(!commands.contains(messageList[0]))
+    {
+        Command* command = new Command(messageList[0]);
+        command->addReceiver(sender);
+        sender->addCommand(command);
+        commands[messageList[0]] = command;
+        DIALOGCommon::logMessage(QString("New command %1 has been registered on "
+                                         "CommunicationControlServer.")
+                                .arg(messageList[0]));
+        infoMonitoringSlot();
+    }
+    else
+    {
+        Command* command = commands[messageList[0]];
+        if(command->addReceiver(sender))
+        {
+            sender->addCommand(command);
+            DIALOGCommon::logMessage(QString("New receiver of command %1 has been registered"
+                                             "on CommunicationControlServer.")
+                                    .arg(messageList[0]));
+            if(sender->processType != Monitoring)
+                infoMonitoringSlot();
+        }
+        else
+            DIALOGCommon::logMessage(QString("Command %1 is already registered by (%2, %3) "
+                                             "on CommunicationControlServer.")
+                                    .arg(messageList[0])
+                                    .arg(senderAddress)
+                                    .arg(senderPort));
+    }
+}
+
+void Server::unregisterCommand(const QString &senderAddress,
+                               quint16 senderPort,
+                               Process *sender,
+                               const QStringList &messageList)
+{
+    if(commands.contains(messageList[0]))
+    {
+        Command* command = commands[messageList[0]];
+        if(sender->commands.contains(command))
+        {
+            sender->removeCommand(command);
+            command->removeReceiver(sender);
+            DIALOGCommon::logMessage(QString("Command %1 has been unregistered by (%2, %3) ")
+                                    .arg(messageList[0])
+                                    .arg(senderAddress)
+                                    .arg(senderPort));
+            if(sender->processType != Monitoring)
+                infoMonitoringSlot();
+        }
+        else
+        {
+            DIALOGCommon::logMessage(QString("Command %1 is not registered by (%2, %3) ")
+                                    .arg(messageList[0])
+                                    .arg(senderAddress)
+                                    .arg(senderPort));
+        }
+    }
+    else
+        DIALOGCommon::logMessage(QString("Command %1 is not provided on the"
+                                         " CommunicationControlServer.")
+                                 .arg(messageList[0]));
+}
+
+void Server::commandMessage(const QStringList &headerList, QByteArray *message)
+{
+    if(headerList[1] != DIRECT) {
+        if(commands.contains(headerList[1]))
+        {
+            Command* command = commands[headerList[1]];
+            foreach(Process* receiver, command->receivers)
+            {
+                QByteArray* newMessage = new QByteArray();
+                newMessage->append(*message);
+                Q_EMIT sendMessageSignal(receiver->processAddress,
+                                         receiver->processPort,
+                                         messageHeader(headerList.join(SEPARATOR)),
+                                         newMessage);
+                DIALOGCommon::logMessage(QString("Command %1 has been received on "
+                                                 "CommunicationControlServer and sent to (%2, %3).")
+                        .arg(headerList[1])
+                        .arg(receiver->processAddress)
+                        .arg(receiver->processPort));
+            }
+        }
+        else
+        {
+            DIALOGCommon::logMessage(QString("Unknown command . The command is not registered "
+                                             "on CommunicationControlSever.")
+                                     .arg(headerList[1]));
+        }
+    }
+    else {
+        if(commands.contains(headerList[3]))
+        {
+            Command* command = commands[headerList[3]];
+            bool send = false;
+            foreach(Process* receiver, command->receivers)
+            {
+                if (receiver->processName == headerList[2]){
+                    QByteArray* newMessage = new QByteArray();
+                    newMessage->append(*message);
+
+                    QString newHeader(headerList[0]);
+                    newHeader.append(SEPARATOR);
+                    newHeader.append(headerList[3]);
+
+                    Q_EMIT sendMessageSignal(receiver->processAddress,
+                                             receiver->processPort,
+                                             messageHeader(newHeader),
+                                             newMessage);
+
+                    DIALOGCommon::logMessage(QString("Command %1 has been received on "
+                                                     "CommunicationControlServer "
+                                                     "and sent to (%2, %3).")
+                            .arg(headerList[1])
+                            .arg(receiver->processAddress)
+                            .arg(receiver->processPort));
+                    send = true;
+                }
+            }
+            if (!send){
+                DIALOGCommon::logMessage(QString("Process does not register command %1.")
+                                         .arg(headerList[3]));
+            }
+        }
+        else
+        {
+            DIALOGCommon::logMessage(QString("Unknown command %1. The command is not "
+                                             "registered on CommunicationControlSever.")
+                                     .arg(headerList[3]));
+        }
+    }
+}
+
+void Server::registerProcesure(const QString &senderAddress,
+                               quint16 senderPort,
+                               Process *sender,
+                               const QStringList &messageList)
+{
+    if(!procedures.contains(messageList[0]))
+    {
+        Procedure* procedure = new Procedure(messageList[0]);
+        procedure->addSender(sender);
+        sender->addProcedure(procedure);
+        procedures[messageList[0]] = procedure;
+        DIALOGCommon::logMessage(QString("New procedure %1 has been registered "
+                                         "on CommunicationControlServer.")
+                                 .arg(messageList[0]));
+        infoMonitoringSlot();
+    }
+    else
+    {
+        Procedure* procedure = procedures[messageList[0]];
+        if(procedure->addSender(sender))
+        {
+            sender->addProcedure(procedure);
+            DIALOGCommon::logMessage(QString("New sender of Procedure  has been "
+                                             "registered on CommunicationControlServer.")
+                    .                arg(messageList[0]));;
+
+            if(sender->processType != Monitoring)
+                infoMonitoringSlot();
+        }
+        else
+            DIALOGCommon::logMessage(QString("Procedure %1 is already registered by (%2, %3).")
+                                    .arg(messageList[0])
+                                    .arg(senderAddress)
+                                    .arg(senderPort));
+    }
+}
+
+void Server::unregisterProcedure(const QString &senderAddress,
+                                 quint16 senderPort,
+                                 Process *sender,
+                                 const QStringList &messageList)
+{
+    if(procedures.contains(messageList[0]))
+    {
+        Procedure* procedure = procedures[messageList[0]];
+        if(sender->procedures.contains(procedure))
+        {
+            sender->removeProcedure(procedure);
+            DIALOGCommon::logMessage(QString("Procedure %1 has been unregistered by (%2, %3)"
+                                             "on CommunicationControlServer.")
+                                     .arg(messageList[0])
+                                     .arg(senderAddress)
+                                     .arg(senderPort));
+            if(sender->processType != Monitoring)
+                infoMonitoringSlot();
+        }
+        else
+        {
+            DIALOGCommon::logMessage(QString("Procedure %1 is not registered by (%2, %3)")
+                                     .arg(messageList[0])
+                                     .arg(senderAddress)
+                                     .arg(senderPort));
+        }
+    }
+    else
+        DIALOGCommon::logMessage(QString("Procedure %1 is not provided "
+                                         "on CommunicationControlServer.")
+                                 .arg(messageList[0]));
+}
+
+void Server::procedureMessage(const QString& senderAddress,
+                              quint16 senderPort,
+                              const QStringList &headerList,
+                              QByteArray *message)
+{
+    if(headerList[1] == PROCEDURE_CALL) {
+        if(procedures.contains(headerList[2]))
+        {
+            Procedure* procedure = procedures[headerList[2]];
+            //chyby distribuce...
+            Process* receiver = procedure->senders[0];
+
+            QByteArray* newMessage = new QByteArray();
+            newMessage->append(*message);
+
+            QString newHeader(headerList[0]);
+            newHeader.append(SEPARATOR);
+            newHeader.append(headerList[1]);
+            newHeader.append(SEPARATOR);
+            newHeader.append(headerList[2]);
+            newHeader.append(SEPARATOR);
+            newHeader.append(senderAddress);
+            newHeader.append(SEPARATOR);
+            newHeader.append(QString::number(senderPort));
+
+            Q_EMIT sendMessageSignal(receiver->processAddress,
+                                     receiver->processPort,
+                                     messageHeader(newHeader),
+                                     newMessage);
+
+            DIALOGCommon::logMessage(QString("Procedure %1 as been received on "
+                                             "CommunicationControlServer and sent to (%2, %3)")
+                                     .arg(headerList[2])
+                                     .arg(senderAddress)
+                                     .arg(senderPort));
+        }
+        else
+        {
+            DIALOGCommon::logMessage(QString("Unknown Procedure %1. The procedure is not "
+                                             "registered on CommunicationControlSever.")
+                                     .arg(headerList[2]));
+        }
+    }
+}
+
+void Server::unknownMessage(const QString &senderAddress,
+                            quint16 senderPort,
+                            QByteArray *header,
+                            QByteArray *message)
+{
+    QString unknownMessage = QString("Unknown message from (%1, %2): %3")
+                                     .arg(senderAddress)
+                                     .arg(senderPort)
+                                     .arg(QString(*header));
+    if(message) {
+        unknownMessage.append(*message);
+    }
+    DIALOGCommon::logMessage(unknownMessage);
+}
+
+Server::Server(QString serverNameInit,
+               ProcessType processTypeInit,
+               QString controlServerAddressInit,
+               quint16 controlServerPortInit,
+               VirtualThread* senderThreadInit,
+               VirtualThread* receiverThreadInit)
 {
     processType = processTypeInit;
     serverName = serverNameInit;
@@ -38,16 +708,10 @@ Server::Server(QString serverNameInit, ProcessType processTypeInit, QString cont
             serverAddress = QString(hostname);
             if(serverAddress.length() == 0)
             {
-                qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "ServerAddress could not be detected.";
+                DIALOGCommon::logMessage("ServerAddress could not be detected.");
                 hardStopSlot();
             }
         }
-
-        /*if(serverAddress.contains("pccogw")) // It should not run on GATEWAY
-        {
-            qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "You can not run " << serverName << " on gateway (pccogwXX machine). Please, use any pccorcXX machine instead.";
-            hardStopSlot();
-        }*/
     }
     else
     {
@@ -65,9 +729,12 @@ void Server::run()
     receiver = new Receiver(serverAddress, serverPort, this);
     sender = new Sender(this);
 
-    QObject::connect(this, &Server::sendMessageSignal, sender, &Sender::sendMessageSlot, Qt::DirectConnection);
-    QObject::connect(this, &Server::sendHeartBeatSignal, sender, &Sender::sendHeartBeatSlot);
-    QObject::connect(sender, &Sender::senderErrorSignal, this, &Server::serverErrorSlot);
+    QObject::connect(this, &Server::sendMessageSignal, sender,
+                     &Sender::sendMessageSlot, Qt::DirectConnection);
+    QObject::connect(this, &Server::sendHeartBeatSignal,
+                     sender, &Sender::sendHeartBeatSlot);
+    QObject::connect(sender, &Sender::senderErrorSignal,
+                     this, &Server::serverErrorSlot);
 
     /* TIMERS */
     if(processType != ControlServer)
@@ -76,32 +743,55 @@ void Server::run()
         heartBeatTimer = new QTimer();
         heartBeatCheckerTimer = NULL;
         reConnectionTimer = new QTimer();
-        QObject::connect(heartBeatTimer, &QTimer::timeout, this, &Server::sendHeartBeatSlot);
-        QObject::connect(reConnectionTimer, &QTimer::timeout, this, &Server::reConnectToControlServerSlot);
+        QObject::connect(heartBeatTimer, &QTimer::timeout,
+                         this, &Server::sendHeartBeatSlot);
+        QObject::connect(reConnectionTimer, &QTimer::timeout,
+                         this, &Server::reConnectToControlServerSlot);
 
-        QObject::connect(receiverThread, &VirtualThread::started, receiver, &Receiver::startThread, Qt::DirectConnection);
-        QObject::connect(receiver, &Receiver::tcpServerStartedSignal, this, &Server::receiverStartSlot);
-        QObject::connect(this, &Server::receiverStartedSignal, sender, &Sender::startThread, Qt::DirectConnection);
-        QObject::connect(sender, &Sender::senderStartedSignal, senderThread, &VirtualThread::startThread, Qt::DirectConnection);
-        QObject::connect(senderThread, &VirtualThread::sendServiceMessageSignal, sender, &Sender::sendServiceMessageSlot, Qt::DirectConnection);
-        QObject::connect(senderThread, &VirtualThread::sendCommandMessageSignal, sender, &Sender::sendCommandMessageSlot, Qt::DirectConnection);
-        QObject::connect(senderThread, &VirtualThread::sendDirectCommandMessageSignal, sender, &Sender::sendDirectCommandMessageSlot, Qt::DirectConnection);
-        QObject::connect(senderThread, &VirtualThread::sendDirectCommandUrlMessageSignal, sender, &Sender::sendDirectCommandUrlMessageSlot, Qt::DirectConnection);
-        QObject::connect(senderThread, &VirtualThread::sendProcedureCallMessageSignal, sender, &Sender::callProcedureMessageSlot, Qt::DirectConnection);
-        QObject::connect(senderThread, &VirtualThread::sendProcedureReturnMessageSignal, sender, &Sender::sendProcedureReturnMessageSlot, Qt::DirectConnection);
+        QObject::connect(receiverThread, &VirtualThread::started,
+                         receiver, &Receiver::startThread, Qt::DirectConnection);
+        QObject::connect(receiver, &Receiver::tcpServerStartedSignal,
+                         this, &Server::receiverStartSlot);
+        QObject::connect(this, &Server::receiverStartedSignal,
+                         sender, &Sender::startThread, Qt::DirectConnection);
+        QObject::connect(sender, &Sender::senderStartedSignal,
+                         senderThread, &VirtualThread::startThread, Qt::DirectConnection);
+        QObject::connect(senderThread, &VirtualThread::sendServiceMessageSignal,
+                         sender, &Sender::sendServiceMessageSlot, Qt::DirectConnection);
+        QObject::connect(senderThread, &VirtualThread::sendCommandMessageSignal,
+                         sender, &Sender::sendCommandMessageSlot, Qt::DirectConnection);
+        QObject::connect(senderThread, &VirtualThread::sendDirectCommandMessageSignal,
+                         sender, &Sender::sendDirectCommandMessageSlot, Qt::DirectConnection);
+        QObject::connect(senderThread, &VirtualThread::sendDirectCommandUrlMessageSignal,
+                         sender, &Sender::sendDirectCommandUrlMessageSlot, Qt::DirectConnection);
+        QObject::connect(senderThread, &VirtualThread::sendProcedureCallMessageSignal,
+                         sender, &Sender::callProcedureMessageSlot, Qt::DirectConnection);
+        QObject::connect(senderThread, &VirtualThread::sendProcedureReturnMessageSignal,
+                         sender, &Sender::sendProcedureReturnMessageSlot, Qt::DirectConnection);
 
-        QObject::connect(this, &Server::serverErrorSignal, receiverThread, &VirtualThread::serverErrorSlot);
+        QObject::connect(this, &Server::serverErrorSignal,
+                         receiverThread, &VirtualThread::serverErrorSlot);
 
-        QObject::connect(this, &Server::stopInitiated, senderThread, &VirtualThread::stop);
-        QObject::connect(senderThread, &VirtualThread::finished, senderThread, &QObject::deleteLater);
-        QObject::connect(senderThread, &VirtualThread::destroyed, sender, &Sender::stop);
-        QObject::connect(sender, &Sender::finished, sender, &QObject::deleteLater);
-        QObject::connect(sender, &Sender::destroyed, receiver, &Receiver::stop);
-        QObject::connect(receiver, &Sender::finished, receiver, &QObject::deleteLater);
-        QObject::connect(receiver, &Sender::destroyed, receiverThread, &VirtualThread::stop);
-        QObject::connect(receiverThread, &VirtualThread::finished, receiverThread, &QObject::deleteLater);
-        QObject::connect(receiverThread, &VirtualThread::destroyed, this, &Server::stopServerSlot);
-        QObject::connect(this, &Server::finished, this, &Server::deleteLater);
+        QObject::connect(this, &Server::stopInitiated,
+                         senderThread, &VirtualThread::stop);
+        QObject::connect(senderThread, &VirtualThread::finished,
+                         senderThread, &QObject::deleteLater);
+        QObject::connect(senderThread, &VirtualThread::destroyed,
+                         sender, &Sender::stop);
+        QObject::connect(sender, &Sender::finished,
+                         sender, &QObject::deleteLater);
+        QObject::connect(sender, &Sender::destroyed,
+                         receiver, &Receiver::stop);
+        QObject::connect(receiver, &Sender::finished,
+                         receiver, &QObject::deleteLater);
+        QObject::connect(receiver, &Sender::destroyed,
+                         receiverThread, &VirtualThread::stop);
+        QObject::connect(receiverThread, &VirtualThread::finished,
+                         receiverThread, &QObject::deleteLater);
+        QObject::connect(receiverThread, &VirtualThread::destroyed,
+                         this, &Server::stopServerSlot);
+        QObject::connect(this, &Server::finished,
+                         this, &Server::deleteLater);
 
         senderThread->setServer(this);
         receiverThread->setServer(this);
@@ -114,11 +804,14 @@ void Server::run()
         heartBeatTimer = NULL;
         heartBeatCheckerTimer = new QTimer();
         reConnectionTimer = NULL;
-        QObject::connect(heartBeatCheckerTimer, &QTimer::timeout, this, &Server::checkHeartBeatSlot);
+        QObject::connect(heartBeatCheckerTimer, &QTimer::timeout,
+                         this, &Server::checkHeartBeatSlot);
         heartBeatCheckerTimer->start(HEARTBEAT_CHECKER_TIMER);
 
-        QObject::connect(receiver, &Receiver::tcpServerStartedSignal, this, &Server::receiverStartSlot);
-        QObject::connect(this, &Server::receiverStartedSignal, sender, &Sender::startThread, Qt::DirectConnection);
+        QObject::connect(receiver, &Receiver::tcpServerStartedSignal,
+                         this, &Server::receiverStartSlot);
+        QObject::connect(this, &Server::receiverStartedSignal,
+                         sender, &Sender::startThread, Qt::DirectConnection);
 
         QObject::connect(this, &Server::stopInitiated, sender, &Sender::stop);
         QObject::connect(sender, &Sender::finished, sender, &QObject::deleteLater);
@@ -133,7 +826,7 @@ void Server::run()
     serverEventLoop = new QEventLoop();
     serverEventLoop->exec();
 
-    qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "End of Server EventLoop";
+    DIALOGCommon::logMessage("End of Server EventLoop");
 
     if(heartBeatTimer != NULL)
     {
@@ -190,7 +883,11 @@ void Server::receiverStartSlot()
 {
     serverAddress = receiver->getReceiverAddress();
     serverPort = receiver->getReceiverPort();
-    serverProcess = new Process(serverAddress, serverPort, processType, serverName, QCoreApplication::applicationPid());
+    serverProcess = new Process(serverAddress,
+                                serverPort,
+                                processType,
+                                serverName,
+                                QCoreApplication::applicationPid());
     addProcess(serverProcess->processKey, serverProcess);
 
     Q_EMIT receiverStartedSignal();
@@ -204,683 +901,130 @@ void Server::hardStopSlot()
     system(command.toUtf8().data());
 }
 
-void Server::messageReceivedSlot(QString senderAddress, quint16 senderPort, QByteArray* header, QByteArray* message)
+void Server::messageReceivedSlot(QString senderAddress,
+                                 quint16 senderPort,
+                                 QByteArray* header,
+                                 QByteArray* message)
 {
     QString senderKey = senderAddress + SEPARATOR + QString::number(senderPort);
 
+    QStringList headerList = QString(*header).split(SEPARATOR);
+
+    QStringList messageList;
+    if (message) {
+        messageList = QString(*message).split(SEPARATOR);
+    }
+
     if(serverProcess->processType == ControlServer)
     {
-        if(header->contains(CONNECT_TO_CONTROL_SERVER))
+        if(headerList.first() == CONNECT_TO_CONTROL_SERVER)
         {
-            QList<QByteArray> messageList = message->split(SEPARATOR);
-
-            if(!isProcessConnectedToControlServer(senderKey))
-            {
-                Process* process = getProcess(senderKey);
-                process->processType = static_cast<ProcessType>(messageList[0].toInt());
-                process->processName = messageList[1];
-                process->processPID = messageList[2].toULongLong();
-                process->connectedToControlServer = true;
-                Q_EMIT sendMessageSignal(senderAddress, senderPort, messageHeader(SUCCESSFULY_CONNECTED));
-                if(process->processType == Custom)
-                    qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "The process " << messageList[1] << " (" << senderAddress << ", " << senderPort << ") is successfully connected to CommunicationControlServer.";
-                else
-                    qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "A new Monitoring (" << senderAddress << ", " << senderPort << ") is successfully connected to CommunicationControlServer.";
-
-                infoMonitoringSlot();
-            }
-            else
-            {
-                qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "The process " << messageList[1] << " (" << senderAddress << ", " << senderPort << ") has been already connected to CommunicationControlServer.";
-            }
-            processHeartBeats[senderKey] = QDateTime::currentMSecsSinceEpoch();
+            connectRequest(senderAddress, senderPort, senderKey, messageList);
         }
         else if(isProcessKnown(senderKey) && isProcessConnectedToControlServer(senderKey))
         {
             Process* sender = getProcess(senderKey);
-            if(header->contains(REGISTER_SERVICE))
+            if(headerList.first() == REGISTER_SERVICE)
             {
-                QList<QByteArray> messageList = message->split(SEPARATOR);
-
-                if(!services.contains(messageList[0]))
-                {
-                    Service* service = new Service(messageList[0]);
-                    service->addSender(sender);
-                    sender->addServiceAsSender(service);
-                    services[messageList[0]] = service;
-                    qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "New service " << messageList[0] << " has been registered on CommunicationControlServer.";
-
-                    infoMonitoringSlot();
-                }
-                else
-                {
-                    Service* service = services[messageList[0]];
-                    if(service->sender == NULL)
-                    {
-                        service->addSender(sender);
-                        sender->addServiceAsSender(service);
-
-                        foreach(Process* receiver, service->receivers)
-                        {
-                            if(receiver->processType == Custom)
-                            {
-                                QByteArray* infoService = new QByteArray();
-                                infoService->append(service->serviceName);
-                                infoService->append(SEPARATOR);
-                                infoService->append(service->sender->processAddress);
-                                infoService->append(SEPARATOR);
-                                infoService->append(QString::number(service->sender->processPort));
-                                Q_EMIT sendMessageSignal(receiver->processAddress, receiver->processPort, messageHeader(INFO_SERVICE), infoService);
-                            }
-                        }
-
-                        qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "New sender of service " << messageList[0] << " has been registered on CommunicationControlServer. Info about service " << messageList[0] << " has been sent.";
-
-                        infoMonitoringSlot();
-                    }
-                    else
-                    {
-                        QByteArray* dialogError = new QByteArray();
-                        dialogError->append(service->serviceName);
-
-                        Q_EMIT sendMessageSignal(senderAddress, senderPort, messageHeader(QString(DIALOG_ERROR).append(SEPARATOR).append(SERVICE_DUPLICATE)), dialogError);
-
-                        qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Service " << messageList[0] << " is already registered on ControlSever.";
-                    }
-                }
+                registerService(senderAddress, senderPort, sender, messageList);
             }
-            else if(header->contains(REQUEST_SERVICE))
+            else if(headerList.first() == REQUEST_SERVICE)
             {
-                QList<QByteArray> messageList = message->split(SEPARATOR);
-
-                QByteArray* infoService = new QByteArray();
-                infoService->append(messageList[0]);
-                infoService->append(SEPARATOR);
-                if(services.contains(messageList[0]))
-                {
-                    services[messageList[0]]->addReceiver(sender);
-                    sender->addServiceAsReceiver(services[messageList[0]]);
-                    Process* senderProcess = services[messageList[0]]->sender;
-                    if(senderProcess != NULL)
-                    {
-                        infoService->append(senderProcess->processAddress);
-                        infoService->append(SEPARATOR);
-                        infoService->append(QString::number(senderProcess->processPort));
-                        qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Info about service " << messageList[0] << " has been sent.";
-                    }
-                    else
-                    {
-                        infoService->append("unknown");
-                        qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Requested service " << messageList[0] << " has no sender on ControlSever.";
-                    }
-                }
-                else
-                {
-                    Service* service = new Service(messageList[0]);
-                    service->addReceiver(sender);
-                    sender->addServiceAsReceiver(service);
-                    services[messageList[0]] = service;
-
-                    infoService->append("unknown");
-                    qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Requested service " << messageList[0] << " has no sender on CommunicationControlSever.";
-                }
-
-                Q_EMIT sendMessageSignal(senderAddress, senderPort, messageHeader(INFO_SERVICE), infoService);
-                if(sender->processType != Monitoring)
-                    infoMonitoringSlot();
+                requestService(senderAddress, senderPort, sender, messageList);
             }
-            else if(header->contains(UNSUBSCRIBE_SERVICE))
+            else if(headerList.first() == UNSUBSCRIBE_SERVICE)
             {
-                QList<QByteArray> messageList = message->split(SEPARATOR);
-
-                if(services.contains(messageList[0]))
-                {
-                    Service* service = services[messageList[0]];
-                    bool isSubscribed = false;
-                    if(sender->servicesAsReceiver.contains(service))
-                    {
-                        isSubscribed = true;
-                    }
-
-                    if(isSubscribed)
-                    {
-                        sender->removeServiceAsReceiver(service);
-                        service->removeReceiver(sender);
-
-                        if(service->sender != NULL)
-                        {
-                            QByteArray* unsubscribeService = new QByteArray();
-                            unsubscribeService->append(messageList[0]);
-                            unsubscribeService->append(SEPARATOR);
-                            unsubscribeService->append(sender->processAddress);
-                            unsubscribeService->append(SEPARATOR);
-                            unsubscribeService->append(QString::number(sender->processPort));
-
-                            Q_EMIT sendMessageSignal(service->sender->processAddress, service->sender->processPort, messageHeader(UNSUBSCRIBE_SERVICE), unsubscribeService);
-                        }
-
-                        qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Service " << messageList[0] << " has been unsubscribed by (" << senderAddress << ", " << senderPort << ").";
-
-                        if(sender->processType != Monitoring)
-                            infoMonitoringSlot();
-                    }
-                    else
-                    {
-                        qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Service " << messageList[0] << " is not subscribed by (" << senderAddress << ", " << senderPort << ").";
-                    }
-                }
-                else
-                    qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Service " << messageList[0] << " is not provided on the CommunicationControlServer.";
+                unsubscribeService(senderAddress, senderPort, sender, messageList);
             }
-            else if(header->contains(LIST_OF_AVAILABLE_SERVICES))
+            else if(headerList.first() == LIST_OF_AVAILABLE_SERVICES)
             {
-                QList<QByteArray> headerList = header->split(SEPARATOR);
-
-                quint16 numberOfAvailableServices = 0;
-                QByteArray* listOfAvailableServices = new QByteArray();
-                bool first = true;
-                foreach(QString key, services.keys())
-                {
-                    if (services[key]->sender != NULL)
-                    {
-                        if(key.contains(QRegularExpression(headerList[1])))
-                        {
-                            numberOfAvailableServices++;
-                            if(!first)
-                                listOfAvailableServices->append(SEPARATOR);
-                            else
-                                first = false;
-                            listOfAvailableServices->append(key);
-                        }
-                    }
-                }
-                //qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "List of available services [" << numberOfAvailableServices << "] for regular expression " << headerList[1] << " has been sent.";
-
-                Q_EMIT sendMessageSignal(senderAddress, senderPort, messageHeader(*header), listOfAvailableServices);
+                listOfServices(senderAddress, senderPort, headerList);
             }
-            else if(header->contains(REGISTER_COMMAND) && !header->contains(UNREGISTER_COMMAND))
+            else if(headerList.first() == REGISTER_COMMAND)
             {
-                QList<QByteArray> messageList = message->split(SEPARATOR);
-
-                if(!commands.contains(messageList[0]))
-                {
-                    Command* command = new Command(messageList[0]);
-                    command->addReceiver(sender);
-                    sender->addCommand(command);
-                    commands[messageList[0]] = command;
-                    qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "New command" << messageList[0] << " has been registered on CommunicationControlServer.";
-
-                    infoMonitoringSlot();
-                }
-                else
-                {
-                    Command* command = commands[messageList[0]];
-                    if(command->addReceiver(sender))
-                    {
-                        sender->addCommand(command);
-
-                        qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "New receiver of command " << messageList[0] << " has been registered on CommunicationControlServer.";
-
-                        if(sender->processType != Monitoring)
-                            infoMonitoringSlot();
-                    }
-                    else
-                        qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Command " << messageList[0] << " is already registered by (" << senderAddress << ", " << senderPort << ") on CommunicationControlSever.";
-                }
+                registerCommand(senderAddress, senderPort, sender, messageList);
             }
-            else if(header->contains(UNREGISTER_COMMAND))
+            else if(headerList.first() == UNREGISTER_COMMAND)
             {
-                QList<QByteArray> messageList = message->split(SEPARATOR);
-
-                if(commands.contains(messageList[0]))
-                {
-                    Command* command = commands[messageList[0]];
-                    bool isRegistered = false;
-                    if(sender->commands.contains(command))
-                    {
-                        isRegistered = true;
-                    }
-
-                    if(isRegistered)
-                    {
-                        sender->removeCommand(command);
-                        command->removeReceiver(sender);
-                        qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Command " << messageList[0] << " has been unregistered by (" << senderAddress << ", " << senderPort << ").";
-
-                        if(sender->processType != Monitoring)
-                            infoMonitoringSlot();
-                    }
-                    else
-                    {
-                        qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Command " << messageList[0] << " is not registered by (" << senderAddress << ", " << senderPort << ").";
-                    }
-                }
-                else
-                    qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Command " << messageList[0] << " is not provided on the CommunicationControlServer.";
+                unregisterCommand(senderAddress, senderPort, sender, messageList);
             }
-            else if(header->contains(COMMAND_MESSAGE))
+            else if(headerList.first() == COMMAND_MESSAGE)
             {
-                QList<QByteArray> headerList = header->split(SEPARATOR);
-
-                if(headerList[1] != DIRECT) {
-                    if(commands.contains(headerList[1]))
-                    {
-                        Command* command = commands[headerList[1]];
-                        foreach(Process* receiver, command->receivers)
-                        {
-                            QByteArray* newMessage = new QByteArray();
-                            newMessage->append(*message);
-
-                            Q_EMIT sendMessageSignal(receiver->processAddress, receiver->processPort, messageHeader(*header), newMessage);
-
-                            qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Command " << headerList[1] << " has been received on CommunicationControlServer and sent to (" << receiver->processAddress << ", " << receiver->processPort << ").";
-                        }
-                    }
-                    else
-                    {
-                        qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Unknown command " << headerList[1] << ". The command is not registered on CommunicationControlSever.";
-                    }
-                }
-                else {
-                    if(commands.contains(headerList[3]))
-                    {
-                        Command* command = commands[headerList[3]];
-                        bool send = false;
-                        foreach(Process* receiver, command->receivers)
-                        {
-                            if (receiver->processName == headerList[2]){
-                                QByteArray* newMessage = new QByteArray();
-                                newMessage->append(*message);
-
-                                //server->messageHeader(QString(COMMAND_MESSAGE).append(SEPARATOR).append(DIRECT).append(SEPARATOR).append(processName).append(SEPARATOR).append(commandName))
-                                QString newHeader(headerList[0]);
-                                newHeader.append(SEPARATOR);
-                                newHeader.append(headerList[3]);
-
-                                Q_EMIT sendMessageSignal(receiver->processAddress, receiver->processPort, messageHeader(newHeader), newMessage);
-
-                                qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Command " << headerList[3] << " has been received on CommunicationControlServer and sent to (" << receiver->processAddress << ", " << receiver->processPort << ").";
-                                send = true;
-                            }
-                        }
-                        if (!send){
-                            qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Process " << headerList[2] << " does not register command " << headerList[3] << ".";
-                        }
-                    }
-                    else
-                    {
-                        qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Unknown command " << headerList[1] << ". The command is not registered on CommunicationControlSever.";
-                    }
-                }
+                commandMessage(headerList, message);
             }
-            else if(header->contains(REGISTER_PROCEDURE) && !header->contains(UNREGISTER_PROCEDURE))
+            else if(headerList.first() == REGISTER_PROCEDURE)
             {
-                QList<QByteArray> messageList = message->split(SEPARATOR);
-
-                if(!procedures.contains(messageList[0]))
-                {
-                    Procedure* procedure = new Procedure(messageList[0]);
-                    procedure->addSender(sender);
-                    sender->addProcedure(procedure);
-                    procedures[messageList[0]] = procedure;
-                    qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "New procedure" << messageList[0] << " has been registered on CommunicationControlServer.";
-
-                    infoMonitoringSlot();
-                }
-                else
-                {//vice senderu...
-//                    Command* command = commands[messageList[0]];
-//                    if(command->addReceiver(sender))
-//                    {
-//                        sender->addCommand(command);
-
-//                        qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "New receiver of command " << messageList[0] << " has been registered on CommunicationControlServer.";
-
-//                        if(sender->processType != Monitoring)
-//                            infoMonitoringSlot();
-//                    }
-//                    else
-//                        qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Command " << messageList[0] << " is already registered by (" << senderAddress << ", " << senderPort << ") on CommunicationControlSever.";
-                }
+                registerProcesure(senderAddress, senderPort, sender, messageList);
             }
-            else if(header->contains(UNREGISTER_PROCEDURE))
+            else if(headerList.first() == UNREGISTER_PROCEDURE)
             {
-                QList<QByteArray> messageList = message->split(SEPARATOR);
-
-                if(procedures.contains(messageList[0]))
-                {
-                    Procedure* procedure = procedures[messageList[0]];
-                    bool isRegistered = false;
-                    if(sender->procedures.contains(procedure))
-                    {
-                        isRegistered = true;
-                    }
-
-                    if(isRegistered)
-                    {
-                        sender->removeProcedure(procedure);
-
-                        qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Procedure " << messageList[0] << " has been unregistered by (" << senderAddress << ", " << senderPort << ").";
-
-                        if(sender->processType != Monitoring)
-                            infoMonitoringSlot();
-                    }
-                    else
-                    {
-                        qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Procedure " << messageList[0] << " is not registered by (" << senderAddress << ", " << senderPort << ").";
-                    }
-                }
-                else
-                    qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Procedure " << messageList[0] << " is not provided on the CommunicationControlServer.";
+                unregisterProcedure(senderAddress, senderPort, sender, messageList);
             }
-            else if(header->contains(PROCEDURE_MESSAGE))
+            else if(headerList.first() == PROCEDURE_MESSAGE)
             {
-                QList<QByteArray> headerList = header->split(SEPARATOR);
-
-                if(headerList[1] == PROCEDURE_CALL) {
-
-                    if(procedures.contains(headerList[2]))
-                    {
-                        Procedure* procedure = procedures[headerList[2]];
-                        Process* receiver = procedure->sender;
-
-                        QByteArray* newMessage = new QByteArray();
-                        newMessage->append(*message);
-
-
-                        QString newHeader(headerList[0]);
-                        newHeader.append(SEPARATOR);
-                        newHeader.append(headerList[1]);
-                        newHeader.append(SEPARATOR);
-                        newHeader.append(headerList[2]);
-                        newHeader.append(SEPARATOR);
-                        newHeader.append(senderAddress);
-                        newHeader.append(SEPARATOR);
-                        newHeader.append(QString::number(senderPort));
-
-                        Q_EMIT sendMessageSignal(receiver->processAddress, receiver->processPort, messageHeader(newHeader), newMessage);
-
-                        qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Procedure " << headerList[2] << " has been received on CommunicationControlServer and sent to (" << receiver->processAddress << ", " << receiver->processPort << ").";
-
-                    }
-                    else
-                    {
-                        qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Unknown procedure " << headerList[2] << ". The procedure is not registered on CommunicationControlSever.";
-                    }
-                }
+                procedureMessage(senderAddress, senderPort, headerList, message);
             }
-            else if(header->contains(HEARTBEAT))
+            else if(headerList.first() == HEARTBEAT)
             {
                 processHeartBeats[senderKey] = QDateTime::currentMSecsSinceEpoch();
-                //qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "HeartBeat received from (" << senderAddress << ", " << senderPort << ").";
             }
             else
             {
-                if(message == NULL)
-                {
-                    qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Unknown message from (" << senderAddress << ", " << senderPort << "): " << *header << ".";
-                }
-                else
-                {
-                    qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Unknown message from (" << senderAddress << ", " << senderPort << "): " << *header << *message << ".";
-                }
+                unknownMessage(senderAddress, senderPort, header, message);
             }
         }
         else
         {
-            Q_EMIT sendMessageSignal(senderAddress, senderPort, messageHeader(CONNECTION_LOST));
-
+            Q_EMIT sendMessageSignal(senderAddress,
+                                     senderPort,
+                                     messageHeader(CONNECTION_LOST));
             processHeartBeats[senderKey] = QDateTime::currentMSecsSinceEpoch();
-
-            qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Unknown sender (" << senderAddress << ", " << senderPort << "). The sender is not connected to CommunicationControlServer.";
+            DIALOGCommon::logMessage(QString("Unknown sender (%1, %2). The sender is not connected"
+                                             " to CommunicationControlServer.")
+                                     .arg(senderAddress)
+                                     .arg(senderPort));
         }
     }
     else
     {
-        if(header->contains(SUCCESSFULY_CONNECTED))
+        if(headerList.first() == SUCCESSFULY_CONNECTED)
         {
-            connectedToControlServer = true;
-
-            if(reConnectionTimer->isActive())
-                reConnectionTimer->stop();
-
-            foreach(Service* service, services)
-            {
-                if(service->sender != NULL)
-                {
-                    if(service->sender->processKey == serverProcess->processKey)
-                        registerServiceSlot(service->serviceName);
-                }
-
-                foreach(Process* receiver, service->receivers)
-                {
-                    if(receiver->processKey == serverProcess->processKey)
-                        requestServiceSlot(service->serviceName);
-                }
-            }
-
-            foreach(Command* command, commands)
-            {
-                registerCommandSlot(command->commandName);
-            }
-
-            heartBeatTimer->start(HEARTBEAT_TIMER);
-            qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Successfuly connected to CommunicationControlServer.";
-            emit successfullyConnectedToControlServer();
+            successfullyConnected();
         }
-        else if(header->contains(CONNECTION_LOST))
+        else if(headerList.first() == CONNECTION_LOST)
         {
-            heartBeatTimer->stop();
-
-            foreach(Service* service, services)
-            {
-                Process* serviceSender = service->sender;
-                if(serviceSender != NULL)
-                {
-                    if(serviceSender != serverProcess)
-                    {
-                        service->removeSender();
-                        serviceSender->removeServiceAsSender(service);
-                        if(!hasProcessDependencies(serviceSender))
-                        {
-                            removeProcess(serviceSender->processKey);
-                        }
-
-                        qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Lost sender with service " << service->serviceName << ".";
-                    }
-                }
-
-                foreach (Process* receiverProcess, service->receivers) {
-                    if (receiverProcess != serverProcess)
-                    {
-                        qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Lost Receiver (" << receiverProcess->processAddress << ", " << receiverProcess->processPort << ").";
-                        service->removeReceiver(receiverProcess);
-                        receiverProcess->removeServiceAsReceiver(service);
-                        if(!hasProcessDependencies(receiverProcess))
-                        {
-                            removeProcess(receiverProcess->processKey);
-                        }
-                        break;
-                    }
-                }
-            }
-
-            sender->closeAllSockets();
-            receiver->closeAllSockets();
-
-            connectedToControlServer = false;
-
-            reConnectToControlServerSlot();
+            connectionLost();
         }
-        else if(header->contains(INFO_SERVICE))
+        else if(headerList.first() == INFO_SERVICE)
         {
-            QList<QByteArray> messageList = message->split(SEPARATOR);
-
-            if(services.contains(messageList[0]))
-            {
-                if(services[messageList[0]]->sender == NULL)
-                {
-                    if (messageList[1] != "unknown")
-                    {
-                        Service* service = services[messageList[0]];
-                        QString senderProcessKey = messageList[1] + SEPARATOR + messageList[2];
-                        if(isProcessKnown(senderProcessKey))
-                        {
-                            service->addSender(getProcess(senderProcessKey));
-                            getProcess(senderProcessKey)->addServiceAsSender(service);
-                        }
-                        else
-                        {
-                            Process* senderProcess = new Process(messageList[1], messageList[2].toUShort(), Custom);
-
-                            addProcess(senderProcessKey, senderProcess);
-                            service->addSender(senderProcess);
-                            senderProcess->addServiceAsSender(service);
-                        }
-
-                        subscribeServiceSlot(messageList[0]);
-                    }
-                    else
-                    {
-                        qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "CommunicationControlServer does not know the sender of service " << messageList[0] << ".";
-                    }
-                }
-                else
-                    qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Service " << messageList[0] << " is already known.";
-            }
-            else
-                qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Service " << messageList[0] << " is not known on the server.";
+            infoService(messageList);
         }
-        else if(header->contains(SUBSCRIBE_SERVICE) && !header->contains(UNSUBSCRIBE_SERVICE))
+        else if(headerList.first() == SUBSCRIBE_SERVICE)
         {
-            QList<QByteArray> messageList = message->split(SEPARATOR);
-
-            if(services.contains(messageList[0]))
-            {
-                bool alreadySubscribed = false;
-                if(isProcessKnown(senderKey))
-                {
-                    alreadySubscribed = !services[messageList[0]]->addReceiver(getProcess(senderKey));
-                    getProcess(senderKey)->addServiceAsReceiver(services[messageList[0]]);
-                }
-                else
-                {
-                    Process* receiverProcess = getProcess(senderKey);
-                    receiverProcess->processType = static_cast<ProcessType>(messageList[1].toInt());
-                    alreadySubscribed = !services[messageList[0]]->addReceiver(receiverProcess);
-                    getProcess(senderKey)->addServiceAsReceiver(services[messageList[0]]);
-                }
-                if(!alreadySubscribed)
-                    qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Service " << messageList[0] << " has been subscribed by (" << senderAddress << ", " << senderPort << ").";
-                else
-                    qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Service " << messageList[0] << " has already been subscribed by (" << senderAddress << ", " << senderPort << ").";
-            }
-            else
-                qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Service " << messageList[0] << " is not provided on the server.";
+            subscribeService(senderKey, messageList);
         }
         else if(header->contains(UNSUBSCRIBE_SERVICE))
         {
-            QList<QByteArray> messageList = message->split(SEPARATOR);
-
-            if(services.contains(messageList[0]))
-            {
-                Service* service = services[messageList[0]];
-                QString receiverKey = messageList[1] + SEPARATOR + messageList[2];
-                if(isProcessKnown(receiverKey))
-                {
-                    Process* receiverProcess = getProcess(receiverKey);
-                    bool isSender = false;
-                    if(service->sender == serverProcess)
-                    {
-                        isSender = true;
-                    }
-
-                    if(isSender)
-                    {
-                        receiverProcess->removeServiceAsReceiver(service);
-                        service->removeReceiver(receiverProcess);
-                        if(!hasProcessDependencies(receiverProcess))
-                        {
-                            removeProcess(receiverProcess->processKey);
-                        }
-
-                        qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Service " << messageList[0] << " has been unsubscribed by (" << messageList[1] << ", " << messageList[2] << ").";
-                    }
-                    else
-                    {
-                        qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "This process (" << serverProcess->processAddress << ", " << serverProcess->processPort << ") is not the sender for Service " << messageList[0] << ".";
-                    }
-                }
-                else
-                {
-                    qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Process (" << senderAddress << ", " << senderPort << ") is not known on the server.";
-                }
-            }
-            else
-                qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Service " << messageList[0] << " is not provided on the server.";
+            unsubscribeService(messageList);
         }
         else if(header->contains(LOST_SENDER))
         {
-            QList<QByteArray> messageList = message->split(SEPARATOR);
-
-            if(services.contains(messageList[0]))
-            {
-                Service* service = services[messageList[0]];
-                Process* serviceSender = service->sender;
-                if(serviceSender != NULL)
-                {
-                    service->removeSender();
-                    serviceSender->removeServiceAsSender(service);
-                    if(!hasProcessDependencies(serviceSender))
-                    {
-                        removeProcess(serviceSender->processKey);
-                    }
-
-                    qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Lost sender with service " << messageList[0] << ".";
-                }
-                else
-                    qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "The sender with service " << messageList[0] << " has not been already known. It could not be deleted.";
-            }
-            else
-                qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Service " << messageList[0] << " is not known on the server.";
+            lostSender(messageList);
         }
         else if(header->contains(LOST_RECEIVER))
         {
-            QList<QByteArray> messageList = message->split(SEPARATOR);
-
-            foreach (Service* service, services)
-            {
-                foreach (Process* receiverProcess, service->receivers)
-                {
-                    if (receiverProcess->processAddress == messageList[0] && receiverProcess->processPort == messageList[1].toUShort())
-                    {
-                        qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Lost Receiver (" << receiverProcess->processAddress << ", " << receiverProcess->processPort << ").";
-                        service->removeReceiver(receiverProcess);
-                        receiverProcess->removeServiceAsReceiver(service);
-                        if(!hasProcessDependencies(receiverProcess))
-                        {
-                            removeProcess(receiverProcess->processKey);
-                        }
-                        break;
-                    }
-                }
-            }
+            lostReceiver(messageList);
         }
         else
         {
-            if(message == NULL)
-            {
-                qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Unknown message from (" << senderAddress << ", " << senderPort << "): " << *header << ".";
-            }
-            else
-            {
-                qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Unknown message from (" << senderAddress << ", " << senderPort << "): " << *header << *message << ".";
-            }
+            unknownMessage(senderAddress, senderPort, header, message);
         }
     }
 
     delete header;
-    delete message;
+    if (message) {
+        delete message;
+    }
 }
 
 void Server::connectToControlServerSlot()
@@ -894,17 +1038,21 @@ void Server::connectToControlServerSlot()
         message->append(SEPARATOR);
         message->append(QString::number(serverProcess->processPID));
 
-        Q_EMIT sendMessageSignal(controlServer->processAddress, controlServer->processPort, messageHeader(CONNECT_TO_CONTROL_SERVER), message);
+        Q_EMIT sendMessageSignal(controlServer->processAddress,
+                                 controlServer->processPort,
+                                 messageHeader(CONNECT_TO_CONTROL_SERVER),
+                                 message);
 
         waitForConnectionToControlServer();
         if (!isConnectedToControlServer()) {
-            qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " Connection to control server failed. ";
+            DIALOGCommon::logMessage("Connection to control server failed.");
         }
 
     }
     else
     {
-        qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "ControlServer is trying to connect to itself. It does not make any sense.";
+        DIALOGCommon::logMessage("ControlServer is trying to connect to itself. "
+                                 "It does not make any sense.");
     }
 }
 
@@ -928,7 +1076,10 @@ void Server::registerServiceSlot(QString serviceName)
         QByteArray* message = new QByteArray();
         message->append(serviceName);
 
-        Q_EMIT sendMessageSignal(controlServer->processAddress, controlServer->processPort, messageHeader(REGISTER_SERVICE), message);
+        Q_EMIT sendMessageSignal(controlServer->processAddress,
+                                 controlServer->processPort,
+                                 messageHeader(REGISTER_SERVICE),
+                                 message);
     }
 }
 
@@ -947,7 +1098,10 @@ void Server::requestServiceSlot(QString serviceName)
         QByteArray* message = new QByteArray();
         message->append(serviceName);
 
-        Q_EMIT sendMessageSignal(controlServer->processAddress, controlServer->processPort, messageHeader(REQUEST_SERVICE), message);
+        Q_EMIT sendMessageSignal(controlServer->processAddress,
+                                 controlServer->processPort,
+                                 messageHeader(REQUEST_SERVICE),
+                                 message);
     }
 }
 
@@ -964,11 +1118,14 @@ void Server::subscribeServiceSlot(QString serviceName)
             message->append(SEPARATOR);
             message->append(QString::number(serverProcess->processType));
 
-            Q_EMIT sendMessageSignal(senderProcess->processAddress, senderProcess->processPort, messageHeader(SUBSCRIBE_SERVICE), message);
+            Q_EMIT sendMessageSignal(senderProcess->processAddress,
+                                     senderProcess->processPort,
+                                     messageHeader(SUBSCRIBE_SERVICE),
+                                     message);
         }
     }
     else
-        qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Service " << serviceName << " is unknown.";
+        DIALOGCommon::logMessage(QString("Service %1 is unknown.").arg(serviceName));
 }
 
 void Server::unSubscribeServiceSlot(QString serviceName)
@@ -995,11 +1152,14 @@ void Server::unSubscribeServiceSlot(QString serviceName)
             QByteArray* message = new QByteArray();
             message->append(serviceName);
 
-            Q_EMIT sendMessageSignal(controlServer->processAddress, controlServer->processPort, messageHeader(UNSUBSCRIBE_SERVICE), message);
+            Q_EMIT sendMessageSignal(controlServer->processAddress,
+                                     controlServer->processPort,
+                                     messageHeader(UNSUBSCRIBE_SERVICE),
+                                     message);
         }
     }
     else
-        qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Service " << serviceName << " is unknown.";
+        DIALOGCommon::logMessage(QString("Service %1 is unknown.").arg(serviceName));
 }
 
 void Server::getListOfAvailableServicesSlot(QString serviceNameRegex)
@@ -1007,11 +1167,15 @@ void Server::getListOfAvailableServicesSlot(QString serviceNameRegex)
     if (controlServer != NULL)
     {
         if(isConnectedToControlServer())
-            Q_EMIT sendMessageSignal(controlServer->processAddress, controlServer->processPort, messageHeader(QString(LIST_OF_AVAILABLE_SERVICES).append(SEPARATOR).append(serviceNameRegex)));
+            Q_EMIT sendMessageSignal(controlServer->processAddress,
+                                     controlServer->processPort,
+                                     messageHeader(QString(LIST_OF_AVAILABLE_SERVICES)
+                                                   .append(SEPARATOR)
+                                                   .append(serviceNameRegex)));
     }
     else
     {
-        qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "The process is not connected to ControlServer.";
+        DIALOGCommon::logMessage("The process is not connected to ControlServer.");
     }
 }
 
@@ -1030,7 +1194,10 @@ void Server::registerCommandSlot(QString commandName)
         QByteArray* message = new QByteArray();
         message->append(commandName);
 
-        Q_EMIT sendMessageSignal(controlServer->processAddress, controlServer->processPort, messageHeader(REGISTER_COMMAND), message);
+        Q_EMIT sendMessageSignal(controlServer->processAddress,
+                                 controlServer->processPort,
+                                 messageHeader(REGISTER_COMMAND),
+                                 message);
     }
 }
 
@@ -1048,11 +1215,14 @@ void Server::unRegisterCommandSlot(QString commandName)
             QByteArray* message = new QByteArray();
             message->append(commandName);
 
-            Q_EMIT sendMessageSignal(controlServer->processAddress, controlServer->processPort, messageHeader(UNREGISTER_COMMAND), message);
+            Q_EMIT sendMessageSignal(controlServer->processAddress,
+                                     controlServer->processPort,
+                                     messageHeader(UNREGISTER_COMMAND),
+                                     message);
         }
     }
     else
-        qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Command " << commandName << " is unknown.";
+        DIALOGCommon::logMessage(QString("Command %1 is unknown.").arg(commandName));
 }
 
 void Server::registerProcedureSlot(QString procedureName)
@@ -1069,7 +1239,10 @@ void Server::registerProcedureSlot(QString procedureName)
         QByteArray* message = new QByteArray();
         message->append(procedureName);
 
-        Q_EMIT sendMessageSignal(controlServer->processAddress, controlServer->processPort, messageHeader(REGISTER_PROCEDURE), message);
+        Q_EMIT sendMessageSignal(controlServer->processAddress,
+                                 controlServer->processPort,
+                                 messageHeader(REGISTER_PROCEDURE),
+                                 message);
     }
 }
 
@@ -1087,15 +1260,18 @@ void Server::unRegisterProcedureSlot(QString procedureName)
             QByteArray* message = new QByteArray();
             message->append(procedureName);
 
-            Q_EMIT sendMessageSignal(controlServer->processAddress, controlServer->processPort, messageHeader(UNREGISTER_PROCEDURE), message);
+            Q_EMIT sendMessageSignal(controlServer->processAddress,
+                                     controlServer->processPort,
+                                     messageHeader(UNREGISTER_PROCEDURE),
+                                     message);
         }
     }
     else
-        qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Procedure " << procedureName << " is unknown.";
+        DIALOGCommon::logMessage(QString("Procedure %1 is unknown)").arg(procedureName));
 
 }
 
-void Server::serverErrorSlot(QString error)
+void Server::serverErrorSlot(const QString& error)
 {
     QStringList errorList = error.split(SEPARATOR);
 
@@ -1104,16 +1280,24 @@ void Server::serverErrorSlot(QString error)
     if(errorList[1] == HOST_NOT_FOUND_ERROR)
     {
         lostControlServer(errorList[2] ,errorList[3].toUShort());
-        qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "The Receiver was not found (" << errorList[2] << ", " << errorList[3] << ").";
+        DIALOGCommon::logMessage(QString("The Receiver was not found (%1, %2)")
+                                 .arg(errorList[2])
+                                 .arg(errorList[3]));
     }
     else if(errorList[1] == CONNECTION_REFUSED_ERROR)
     {
         lostControlServer(errorList[2] ,errorList[3].toUShort());
-        qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "The connection was refused by the Receiver (" << errorList[2] << ", " << errorList[3] << ").";
+        DIALOGCommon::logMessage(QString("The connection was refused by the Receiver (%1, %2)")
+                                 .arg(errorList[2])
+                                 .arg(errorList[3]));
     }
     else
     {
-        qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "The following error occurred in connection to the Receiver (" << errorList[3] << ", " << errorList[4] << "): " << errorList[2];
+        DIALOGCommon::logMessage(QString("The following error occurred in connection to"
+                                         " the Receiver (%1, %2): %3.")
+                                 .arg(errorList[3])
+                                 .arg(errorList[4])
+                                 .arg(errorList[2]));
     }
 }
 
@@ -1136,11 +1320,9 @@ void Server::checkHeartBeatSlot()
         if (difference > HEARTBEAT_CHECKER_TIMER)
         {
             processHeartBeats.remove(key);
-
             if(isProcessKnown(key))
             {
                 Process* process = getProcess(key);
-
                 if(process->processType != Monitoring)
                 {
                     /* SENDER CRASHED */
@@ -1150,16 +1332,15 @@ void Server::checkHeartBeatSlot()
                             QByteArray* lostSender = new QByteArray();
                             lostSender->append(service->serviceName);
 
-                            Message* message = new Message(receiverProcess, messageHeader(LOST_SENDER), lostSender);
+                            Message* message = new Message(receiverProcess,
+                                                           messageHeader(LOST_SENDER),
+                                                           lostSender);
                             messages.append(message);
                         }
-
                         service->removeSender();
                     }
-
                     isProcessLost = true;
                 }
-
                 /* RECEIVER CRASHED */
                 foreach(Service* service, process->servicesAsReceiver)
                 {
@@ -1170,25 +1351,22 @@ void Server::checkHeartBeatSlot()
                         lostReceiver->append(SEPARATOR);
                         lostReceiver->append(QString::number(process->processPort));
 
-                        Message* message = new Message(service->sender, messageHeader(LOST_RECEIVER), lostReceiver);
+                        Message* message = new Message(service->sender,
+                                                       messageHeader(LOST_RECEIVER),
+                                                       lostReceiver);
                         messages.append(message);
                     }
-
                     service->removeReceiver(process);
-
                     if(process->processType == Custom)
                         isProcessLost = true;
                 }
-
                 /* COMMAND PROCESS CRASHED */
                 foreach(Command* command, process->commands)
                 {
                     command->removeReceiver(process);
-
                     if(process->processType == Custom)
                         isProcessLost = true;
                 }
-
                 foreach (Message* message, messages)
                 {
                     if(message->receiverProcess == process)
@@ -1198,29 +1376,37 @@ void Server::checkHeartBeatSlot()
                         delete message;
                     }
                 }
-
                 if (process->processType != Monitoring)
                 {
                     if(process->processName == "" && process->processPID == 0)
-                        qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Not connected process " << key << " crashed or did not connect to ControlServer (No HeartBeats have been received).";
+                        DIALOGCommon::logMessage(QString("Not connected process %1 crashed or did "
+                                                         "not connect to ControlServer "
+                                                         "(No HeartBeats have been received).")
+                                                 .arg(key));
                     else
-                        qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Process " << key << " (" << process->processName << ") crashed (No HeartBeats have been received).";
+                        DIALOGCommon::logMessage(QString("Process %1 (%2) crashed (No HeartBeats "
+                                                         "have been received).")
+                                                 .arg(key)
+                                                 .arg(process->processName));
                 }
                 else
-                    qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Monitoring " << key << " crashed (No HeartBeats have been received).";
-
+                    DIALOGCommon::logMessage(QString("Monitoring %1 crashed (No HeartBeats "
+                                                     "have been received).")
+                                             .arg(key));
                 removeProcess(key);
             }
         }
     }
-
     if(isProcessLost)
         infoMonitoringSlot();
 
     foreach (Message* message, messages)
     {
-        Q_EMIT sendMessageSignal(message->receiverProcess->processAddress, message->receiverProcess->processPort, message->header, message->message);
-        messages.removeAll(message);
+        Q_EMIT sendMessageSignal(message->receiverProcess->processAddress,
+                                 message->receiverProcess->processPort,
+                                 message->header,
+                                 message->message);
+        messages.removeAll(message);//LEAK????
         delete message;
     }
 }
@@ -1237,28 +1423,43 @@ void Server::infoMonitoringSlot()
         info->append("<processes>");
         foreach (Process* process, processes)
         {
-            if(process->processType == Custom && process->processName != "" && process->processPID != 0)
+            if(process->processType == Custom &&
+               process->processName != "" && process->processPID != 0)
             {
-                info->append(QString("<process name=\"%1\" address=\"%2\" port=\"%3\" pid=\"%4\">").arg(process->processName).arg(process->processAddress).arg(process->processPort).arg(process->processPID));
+                info->append(QString("<process name=\"%1\" address=\"%2\" port=\"%3\" pid=\"%4\">")
+                             .arg(process->processName)
+                             .arg(process->processAddress)
+                             .arg(process->processPort)
+                             .arg(process->processPID));
                 foreach (Service* service, process->servicesAsSender) {
-                    info->append(QString("<service name=\"%1\">").arg(service->serviceName));
+                    info->append(QString("<service name=\"%1\">")
+                                 .arg(service->serviceName));
                     foreach (Process* receiver, service->receivers) {
                         if(receiver->processType == Custom)
                         {
-                            info->append(QString("<receiver name=\"%1\" address=\"%2\" port=\"%3\" pid=\"%4\" />").arg(receiver->processName).arg(receiver->processAddress).arg(receiver->processPort).arg(receiver->processPID));
+                            info->append(QString("<receiver name=\"%1\" address=\"%2\" "
+                                                 "port=\"%3\" pid=\"%4\" />")
+                                         .arg(receiver->processName)
+                                         .arg(receiver->processAddress)
+                                         .arg(receiver->processPort)
+                                         .arg(receiver->processPID));
                         }
                     }
                     info->append("</service>");
                 }
                 foreach (Command* command, process->commands) {
-                    info->append(QString("<command name=\"%1\" />").arg(command->commandName));
+                    info->append(QString("<command name=\"%1\" />")
+                                 .arg(command->commandName));
                 }
                 info->append("</process>");
             }
         }
         info->append("</processes>");
 
-        Q_EMIT sendMessageSignal(receiverProcess->processAddress, receiverProcess->processPort, messageHeader(INFO_MONITORING), info);
+        Q_EMIT sendMessageSignal(receiverProcess->processAddress,
+                                 receiverProcess->processPort,
+                                 messageHeader(INFO_MONITORING),
+                                 info);
     }
 }
 
@@ -1276,13 +1477,14 @@ bool Server::hasProcessDependencies(Process* process)
                 return true;
         }
     }
-
     return false;
 }
 
 void Server::lostControlServer(QString errorProcessAddress, quint16 errorProcessPort)
 {
-    if(serverProcess->processType != ControlServer && controlServer->processAddress == errorProcessAddress && controlServer->processPort == errorProcessPort)
+    if(serverProcess->processType != ControlServer &&
+       controlServer->processAddress == errorProcessAddress &&
+       controlServer->processPort == errorProcessPort)
     {
         heartBeatTimer->stop();
         if(!reConnectionTimer->isActive())
@@ -1300,15 +1502,16 @@ void Server::lostControlServer(QString errorProcessAddress, quint16 errorProcess
                         {
                             removeProcess(serviceSender->processKey);
                         }
-
-                        qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Lost sender with service " << service->serviceName << ".";
+                        DIALOGCommon::logMessage(QString("Lost sender with service %1.")
+                                                 .arg(service->serviceName));
                     }
                 }
-
                 foreach (Process* receiverProcess, service->receivers) {
                     if (receiverProcess != serverProcess)
                     {
-                        qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Lost Receiver (" << receiverProcess->processAddress << ", " << receiverProcess->processPort << ").";
+                        DIALOGCommon::logMessage(QString("Lost Receiver (%1, %2)")
+                                                 .arg(receiverProcess->processAddress)
+                                                 .arg(receiverProcess->processPort));
                         service->removeReceiver(receiverProcess);
                         receiverProcess->removeServiceAsReceiver(service);
                         if(!hasProcessDependencies(receiverProcess))
@@ -1319,7 +1522,6 @@ void Server::lostControlServer(QString errorProcessAddress, quint16 errorProcess
                     }
                 }
             }
-
             sender->closeAllSockets();
             receiver->closeAllSockets();
 
@@ -1451,6 +1653,86 @@ bool Server::isProcessConnectedToControlServer(QString key)
     return connected;
 }
 
+void Server::successfullyConnected()
+{
+    connectedToControlServer = true;
+
+    if(reConnectionTimer->isActive())
+        reConnectionTimer->stop();
+
+    foreach(Service* service, services)
+    {
+        if(service->sender != NULL)
+        {
+            if(service->sender->processKey == serverProcess->processKey)
+                registerServiceSlot(service->serviceName);
+        }
+
+        foreach(Process* receiver, service->receivers)
+        {
+            if(receiver->processKey == serverProcess->processKey)
+                requestServiceSlot(service->serviceName);
+        }
+    }
+
+    foreach(Command* command, commands)
+    {
+        registerCommandSlot(command->commandName);
+    }
+
+    heartBeatTimer->start(HEARTBEAT_TIMER);
+    DIALOGCommon::logMessage("Successfuly connected to CommunicationControlServer.");
+    emit successfullyConnectedToControlServer();
+}
+
+void Server::connectionLost()
+{
+    heartBeatTimer->stop();
+
+    foreach(Service* service, services)
+    {
+        Process* serviceSender = service->sender;
+        if(serviceSender != NULL)
+        {
+            if(serviceSender != serverProcess)
+            {
+                service->removeSender();
+                serviceSender->removeServiceAsSender(service);
+                if(!hasProcessDependencies(serviceSender))
+                {
+                    removeProcess(serviceSender->processKey);
+                }
+
+                DIALOGCommon::logMessage(QString("Lost sender with service %1.")
+                                         .arg(service->serviceName));
+            }
+        }
+
+        foreach (Process* receiverProcess, service->receivers) {
+            if (receiverProcess != serverProcess)
+            {
+                DIALOGCommon::logMessage(QString("Lost Receiver (%1, %2).")
+                                         .arg(receiverProcess->processAddress)
+                                         .arg(receiverProcess->processPort));
+                service->removeReceiver(receiverProcess);
+                receiverProcess->removeServiceAsReceiver(service);
+                if(!hasProcessDependencies(receiverProcess))
+                {
+                    removeProcess(receiverProcess->processKey);
+                }
+                break;
+            }
+        }
+    }
+
+    sender->closeAllSockets();
+    receiver->closeAllSockets();
+
+    connectedToControlServer = false;
+
+    reConnectToControlServerSlot();
+}
+
 bool Server::waitForConnectionToControlServer(int sTimeout)
 {
     if (!isConnectedToControlServer()) {
@@ -1467,5 +1749,5 @@ bool Server::waitForConnectionToControlServer(int sTimeout)
 
 Server::~Server()
 {
-    qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Server destructor";
+    DIALOGCommon::logMessage("Server destructor");
 }

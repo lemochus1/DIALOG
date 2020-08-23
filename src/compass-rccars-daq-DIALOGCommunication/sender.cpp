@@ -13,14 +13,15 @@ Sender::Sender(Server* serverInit)
     moveToThread(this);
 }
 
-void Sender::sendMessageSlot(QString receiverAddress, quint16 receiverPort, QByteArray* header, QByteArray* message)
+void Sender::sendMessageSlot(QString receiverAddress,
+                             quint16 receiverPort,
+                             QByteArray* header,
+                             QByteArray* message)
 {
     if(senderStarted)
     {
         MessageContainer* messageContainer = new MessageContainer(header, message);
-
         QString receiverKey = receiverAddress + SEPARATOR + QString::number(receiverPort);
-
         Process* process;
         if(server->getControlServer()->processKey == receiverKey)
             process = server->getControlServer();
@@ -39,9 +40,10 @@ void Sender::sendHeartBeatSlot(QByteArray* header)
     if(senderStarted)
     {
         MessageContainer* messageContainer = new MessageContainer(header);
-
         if(!server->getControlServer()->sendMessage(messageContainer))
-            sendToHost(server->getControlServer()->processAddress, server->getControlServer()->processPort, messageContainer);
+            sendToHost(server->getControlServer()->processAddress,
+                       server->getControlServer()->processPort,
+                       messageContainer);
     }
 }
 
@@ -53,7 +55,13 @@ void Sender::sendServiceMessageSlot(QString serviceName, QByteArray* message)
         if(service != NULL)
         {
             service->receiversLock.lock();
-            MessageContainer* messageContainer = new MessageContainer(server->messageHeader(QString(SERVICE_MESSAGE).append(SEPARATOR).append(serviceName)), message, service->receivers.count());
+            MessageContainer* messageContainer = new MessageContainer(
+                                                        server->messageHeader(
+                                                                QString(SERVICE_MESSAGE)
+                                                                .append(SEPARATOR)
+                                                                .append(serviceName)),
+                                                        message,
+                                                        service->receivers.count());
             foreach(Process* receiver, service->receivers)
             {
                 if(!receiver->sendMessage(messageContainer))
@@ -62,7 +70,8 @@ void Sender::sendServiceMessageSlot(QString serviceName, QByteArray* message)
             service->receiversLock.unlock();
         }
         else
-            qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Service " << serviceName << " is not provided on the server.";
+            DIALOGCommon::logMessage(QString("Service %1 is not provided on the server.")
+                                     .arg(serviceName));
     }
     else
         delete message;
@@ -72,44 +81,62 @@ void Sender::sendCommandMessageSlot(QString commandName, QByteArray* message)
 {
     if(senderStarted)
     {
-        MessageContainer* messageContainer = new MessageContainer(server->messageHeader(QString(COMMAND_MESSAGE).append(SEPARATOR).append(commandName)), message);
-
+        MessageContainer* messageContainer = new MessageContainer(
+                                                server->messageHeader(QString(COMMAND_MESSAGE)
+                                                                      .append(SEPARATOR)
+                                                                      .append(commandName)),
+                                                message);
         if(!server->getControlServer()->sendMessage(messageContainer))
-            sendToHost(server->getControlServer()->processAddress, server->getControlServer()->processPort, messageContainer);
+            sendToHost(server->getControlServer()->processAddress,
+                       server->getControlServer()->processPort,
+                       messageContainer);
     }
     else
         delete message;
 }
 
-void Sender::sendDirectCommandMessageSlot(QString commandName, QByteArray *message, QString processName)
+void Sender::sendDirectCommandMessageSlot(QString commandName,
+                                          QByteArray *message,
+                                          QString processName)
 {
     if(senderStarted)
     {
-        MessageContainer* messageContainer = new MessageContainer(server->messageHeader(QString(COMMAND_MESSAGE).append(SEPARATOR).append(DIRECT).append(SEPARATOR).append(processName).append(SEPARATOR).append(commandName)), message);
-
+        MessageContainer* messageContainer = new MessageContainer(
+                                                    server->messageHeader(QString(COMMAND_MESSAGE)
+                                                                          .append(SEPARATOR)
+                                                                          .append(DIRECT)
+                                                                          .append(SEPARATOR)
+                                                                          .append(processName)
+                                                                          .append(SEPARATOR)
+                                                                          .append(commandName)),
+                                                    message);
         if(!server->getControlServer()->sendMessage(messageContainer))
-            sendToHost(server->getControlServer()->processAddress, server->getControlServer()->processPort, messageContainer);
+            sendToHost(server->getControlServer()->processAddress,
+                       server->getControlServer()->processPort,
+                       messageContainer);
     }
     else
         delete message;
 }
 
-void Sender::sendDirectCommandUrlMessageSlot(QString commandName, QByteArray *message, QString url, int port)
+void Sender::sendDirectCommandUrlMessageSlot(QString commandName,
+                                             QByteArray *message,
+                                             QString url,
+                                             int port)
 {
     if(senderStarted)
     {
-        MessageContainer* messageContainer = new MessageContainer(server->messageHeader(QString(COMMAND_MESSAGE).append(SEPARATOR).append(commandName)), message);
-
+        MessageContainer* messageContainer = new MessageContainer(
+                                                    server->messageHeader(QString(COMMAND_MESSAGE)
+                                                                          .append(SEPARATOR)
+                                                                          .append(commandName)),
+                                                    message);
         QString senderProcessKey = url + SEPARATOR + QString::number(port);
-
         if(!server->isProcessKnown(senderProcessKey))
         {
             Process* senderProcess = new Process(url, port, Custom);
             server->addProcess(senderProcessKey, senderProcess);
-
-            //qDebug() << "New process " << senderProcessKey;
         }
-
         sendToHost(url, port, messageContainer);
     }
     else
@@ -120,29 +147,41 @@ void Sender::callProcedureMessageSlot(QString procedureName, QByteArray *message
 {
     if(senderStarted)
     {
-        MessageContainer* messageContainer = new MessageContainer(server->messageHeader(QString(PROCEDURE_MESSAGE).append(SEPARATOR).append(PROCEDURE_CALL).append(SEPARATOR).append(procedureName)), message);
-
+        MessageContainer* messageContainer = new MessageContainer(
+                                                    server->messageHeader(QString(PROCEDURE_MESSAGE)
+                                                                          .append(SEPARATOR)
+                                                                          .append(PROCEDURE_CALL)
+                                                                          .append(SEPARATOR)
+                                                                          .append(procedureName)),
+                                                    message);
         if(!server->getControlServer()->sendMessage(messageContainer))
-            sendToHost(server->getControlServer()->processAddress, server->getControlServer()->processPort, messageContainer);
+            sendToHost(server->getControlServer()->processAddress,
+                       server->getControlServer()->processPort,
+                       messageContainer);
     }
     else
         delete message;
 }
 
-void Sender::sendProcedureReturnMessageSlot(QString procedureName, QByteArray *message, QString url, int port)
+void Sender::sendProcedureReturnMessageSlot(QString procedureName,
+                                            QByteArray *message,
+                                            QString url,
+                                            int port)
 {
     if(senderStarted)
     {
-        MessageContainer* messageContainer = new MessageContainer(server->messageHeader(QString(PROCEDURE_MESSAGE).append(SEPARATOR).append(PROCEDURE_DATA).append(SEPARATOR).append(procedureName)), message);
-
+        MessageContainer* messageContainer = new MessageContainer(
+                                                    server->messageHeader(QString(PROCEDURE_MESSAGE)
+                                                                          .append(SEPARATOR)
+                                                                          .append(PROCEDURE_DATA)
+                                                                          .append(SEPARATOR)
+                                                                          .append(procedureName)),
+                                                    message);
         QString senderProcessKey = url + SEPARATOR + QString::number(port);
-
         if(!server->isProcessKnown(senderProcessKey))
         {
             Process* senderProcess = new Process(url, port, Custom);
             server->addProcess(senderProcessKey, senderProcess);
-
-            //qDebug() << "New process " << senderProcessKey;
         }
         sendToHost(url, port, messageContainer);
     }
@@ -195,7 +234,9 @@ void Sender::socketDisconnectedSlot()
     numberOfOpenSockets--;
 }
 
-void Sender::sendToHost(QString receiverAddress, quint16 receiverPort, MessageContainer* messageContainer)
+void Sender::sendToHost(QString receiverAddress,
+                        quint16 receiverPort,
+                        MessageContainer* messageContainer)
 {
     QString receiverKey = receiverAddress + SEPARATOR + QString::number(receiverPort);
 
@@ -210,10 +251,10 @@ void Sender::sendToHost(QString receiverAddress, quint16 receiverPort, MessageCo
         }
         else
         {
-            Process* process = server->getProcess(receiverKey);//if does not contains = error
+            Process* process = server->getProcess(receiverKey);
             if (!process)
             {
-                qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Try to send to not known process " << receiverKey;
+                DIALOGCommon::logMessage("Try to send to not known process" + receiverKey);
                 if(messageContainer->deleteMessage() == 0)
                     delete messageContainer;
                 return;
@@ -236,7 +277,8 @@ void Sender::sendToHost(QString receiverAddress, quint16 receiverPort, MessageCo
         QObject::connect(newSocket, &Socket::destroyed, this, &Sender::socketDisconnectedSlot);
 
         Q_EMIT connectToHostSignal();
-        QObject::disconnect(this, &Sender::connectToHostSignal, newSocket, &Socket::connectToHostSlot);
+        QObject::disconnect(this, &Sender::connectToHostSignal,
+                            newSocket, &Socket::connectToHostSlot);
     }
     else
     {
@@ -247,7 +289,7 @@ void Sender::sendToHost(QString receiverAddress, quint16 receiverPort, MessageCo
 
 Sender::~Sender()
 {
-    qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "ServerSender destructor";
+    DIALOGCommon::logMessage("ServerSender destructor");
 }
 
 void Sender::run()
@@ -256,7 +298,8 @@ void Sender::run()
     for(int i = 0; i < NUMBER_OF_SENDER_THREADS; i++)
     {
         senderThreads[i] = new QThread();
-        QObject::connect(senderThreads[i], &QThread::finished, senderThreads[i], &QThread::deleteLater);
+        QObject::connect(senderThreads[i], &QThread::finished,
+                         senderThreads[i], &QThread::deleteLater);
 
         senderThreads[i]->start();
     }
@@ -267,7 +310,7 @@ void Sender::run()
     senderEventLoop = new QEventLoop();
     senderEventLoop->exec();
 
-    qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "End of ServerSender EventLoop";
+    DIALOGCommon::logMessage("End of ServerSender EventLoop");
 }
 
 void Sender::startThread()

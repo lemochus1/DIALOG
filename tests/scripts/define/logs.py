@@ -28,12 +28,12 @@ CONNECTED_MESSAGE   = "connected to CommunicationControlServer"
 KILLED_MESSAGE      = "Killed during cleanup.";
 
 CONTROL_CONNECT_MESSAGE = "is successfully connected to CommunicationControlServer."
-REGISTERED_MESSAGE = "has been registered on CommunicationControlServer."
-RECEIVED_MESSAGE = "has been received on CommunicationControlServer and sent to"
-SUBSCRIBED_MESSAGE = "has been subscribed by"
+REGISTERED_MESSAGE      = "has been registered on CommunicationControlServer."
+RECEIVED_MESSAGE        = "has been received on CommunicationControlServer and sent to"
+SUBSCRIBED_MESSAGE      = "has been subscribed by"
 
 INFO_ABOUT_SERVICE_MESSAGE = "Info about service"
-NEW_SENDER_MESSAGE = "New sender of service"
+NEW_SENDER_MESSAGE         = "New sender of service"
 
 STANDARD_MESSAGE_PARTS = [START_MESSAGE_START, CONNECTED_MESSAGE, KILLED_MESSAGE,
                           CONTROL_CONNECT_MESSAGE, REGISTERED_MESSAGE, RECEIVED_MESSAGE]
@@ -43,8 +43,8 @@ STANDARD_MESSAGE_PARTS = [START_MESSAGE_START, CONNECTED_MESSAGE, KILLED_MESSAGE
 #===================================================================================================
 
 NO_CONNECTION_FORMAT_MESSAGE  = "Process {} was not connected to Control Server."
-UNEXPECTED_LOG_FORMAT_MESSAGE = "Unexpected log found in {}:"
-ERROR_OCCURED_FORMAT_MESSAGE  = "Error occurred in {}:"
+UNEXPECTED_LOG_FORMAT_MESSAGE = "Unexpected log on {}:"
+ERROR_OCCURED_FORMAT_MESSAGE  = "Error occurred on {}:"
 NO_REGISTER_FORMAT_MESSAGE    = "Handler {} did not register anything."
 NO_CONSISTENT_FORMAT_MESSAGE  = " {} did not receive {} messages."
 DEMAGED_MESSAGE_MESSAGE       = "Some message was delivered demaged."

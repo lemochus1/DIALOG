@@ -13,8 +13,11 @@ void VirtualThread::setServer(Server *serverInit)
 
 void VirtualThread::messageReceivedSlot(QString senderName, quint16 senderPort, QByteArray* header, QByteArray* message)
 {
-    qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Received message from (" << senderName << ", " << senderPort << "): " << *header << *message << ".";
-
+    DIALOGCommon::logMessage(QString("Received message from (%1, %2): %3, %4")
+                            .arg(senderName)
+                            .arg(senderPort)
+                            .arg(QString(*header))
+                            .arg(QString(*message)));
     delete message;
 }
 

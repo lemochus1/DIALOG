@@ -1,16 +1,14 @@
 #include "dialogapi.h"
 
-DIALOGProcess::DIALOGProcess(QString nameInit, QObject *parent)
-: QObject(parent)
+DIALOGProcess::DIALOGProcess(const QString &name, QObject *parent)
+    : QObject(parent),
+      sender(),
+      receiver(),
+      name(name)
 {
     server = nullptr;
-
-    receiver = new ReceiverThread();
-    sender = new SenderThread();
-
-    controlServerUrl = getenv("DIALOG_CONTROL_SERVER_ADDRESS");
+    controlServerAddress = getenv("DIALOG_CONTROL_SERVER_ADDRESS");
     controlServerPort = QString(getenv("DIALOG_CONTROL_SERVER_PORT")).toInt();
-    name = nameInit;
 }
 
 DIALOGProcess::~DIALOGProcess()
@@ -21,14 +19,14 @@ DIALOGProcess::~DIALOGProcess()
 
 void DIALOGProcess::start(QThread::Priority priority)
 {
-    server = new Server(name, Custom, controlServerUrl, controlServerPort, sender, receiver);
+    server = new Server(name, Custom, controlServerAddress, controlServerPort, sender, receiver);
     QObject::connect(server, &Server::destroyed, this, &DIALOGProcess::serverDestroyed);
     server->start(priority);
 }
 
-void DIALOGProcess::setControlServerAdress(QString url, int port)
+void DIALOGProcess::setControlServerAdress(QString address, int port)
 {
-    controlServerUrl = url;
+    controlServerAddress = address;
     controlServerPort = port;
 }
 
@@ -92,7 +90,7 @@ DIALOGServiceSubscriber *DIALOGProcess::requestService(QString name)
 
 DIALOGProcedureCaller *DIALOGProcess::callProcedure(QString name, QByteArray message)
 {
-    if (server->waitForConnectionToControlServer(5)) {
+    if (server->waitForConnectionToControlServer()) {
         DIALOGProcedureCaller* caller = new DIALOGProcedureCaller(name);
         receiver->registerProcedureCaller(caller);
         sender->callProcedureSlot(name, message);
@@ -103,7 +101,7 @@ DIALOGProcedureCaller *DIALOGProcess::callProcedure(QString name, QByteArray mes
 
 void DIALOGProcess::sendCommandSlot(QString name, QByteArray message)
 {
-    if (server->waitForConnectionToControlServer(5)) {
+    if (server->waitForConnectionToControlServer()) {
         QByteArray* commandMessage = new QByteArray();
         commandMessage->append(message);
         sender->sendCommandSlot(name, commandMessage);
@@ -112,7 +110,7 @@ void DIALOGProcess::sendCommandSlot(QString name, QByteArray message)
 
 void DIALOGProcess::sendDirectCommandSlot(QString name, QByteArray message, QString processName)
 {
-    if (server->waitForConnectionToControlServer(5)) {
+    if (server->waitForConnectionToControlServer()) {
         QByteArray* commandMessage = new QByteArray();
         commandMessage->append(message);
 
@@ -134,7 +132,7 @@ void DIALOGProcess::stopSlot()
 
 DIALOGProcess::SenderThread::~SenderThread()
 {
-    qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Sender destructor";
+    DIALOGCommon::logMessage("Sender destructor");
 }
 
 void DIALOGProcess::SenderThread::run()
@@ -160,7 +158,7 @@ void DIALOGProcess::SenderThread::run()
     virtualThreadEventLoop = new QEventLoop();
     virtualThreadEventLoop->exec();
 
-    qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "End of Sender EventLoop";
+    DIALOGCommon::logMessage("End of Sender EventLoop");
 }
 
 void DIALOGProcess::SenderThread::addServiceToRequest(QString name)
@@ -203,16 +201,22 @@ void DIALOGProcess::SenderThread::sendDirectCommandUrlSlot(QString name, QByteAr
 
 void DIALOGProcess::SenderThread::sendServiceSlot(QString name, QByteArray message)
 {
-    QByteArray* serviceMessage = new QByteArray();
-    serviceMessage->append(message);
-    emit sendServiceMessageSignal(name, serviceMessage);
+//    if (server->isConnectedToControlServer()) {
+        QByteArray* serviceMessage = new QByteArray();
+        serviceMessage->append(message);
+        emit sendServiceMessageSignal(name, serviceMessage);
+//    } else {
+//        qDebug()<<"No connection to control server.";
+//    }
 }
 
 void DIALOGProcess::SenderThread::callProcedureSlot(QString name, QByteArray message)
 {
-    QByteArray* serviceMessage = new QByteArray();
-    serviceMessage->append(message);
-    emit sendProcedureCallMessageSignal(name, serviceMessage);
+    if (server->isConnectedToControlServer()) {
+        QByteArray* serviceMessage = new QByteArray();
+        serviceMessage->append(message);
+        emit sendProcedureCallMessageSignal(name, serviceMessage);
+    }
 }
 
 void DIALOGProcess::SenderThread::sendProcedureReturnSlot(QString name, QByteArray data, QString url, int port)
@@ -224,7 +228,7 @@ void DIALOGProcess::SenderThread::sendProcedureReturnSlot(QString name, QByteArr
 
 DIALOGProcess::ReceiverThread::~ReceiverThread()
 {
-    qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "Receiver destructor";
+    DIALOGCommon::logMessage("Receiver destructor");
 }
 
 void DIALOGProcess::ReceiverThread::run()
@@ -232,7 +236,7 @@ void DIALOGProcess::ReceiverThread::run()
     virtualThreadEventLoop = new QEventLoop();
     virtualThreadEventLoop->exec();
 
-    qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "End of Receiver EventLoop";
+    DIALOGCommon::logMessage("End of Receiver EventLoop");
 }
 
 void DIALOGProcess::ReceiverThread::registerCommand(DIALOGCommand *command)
@@ -349,7 +353,6 @@ void DIALOGServicePublisher::updateDataSlot(QByteArray dataInit)
 void DIALOGServiceSubscriber::dataUpdatedSlot(QByteArray dataInit)
 {
     data = dataInit;
-    qDebug() << QString(dataInit);
     emit dataUpdatedSignal(dataInit);
 }
 
@@ -362,7 +365,7 @@ QByteArray DIALOGProcedureCaller::waitForData(bool &ok, int timeout)
     QTimer timer;
     timer.setSingleShot(true);
     QEventLoop loop;
-    connect(this, &DIALOGProcedureCaller::dataSetSignal, &loop, &QEventLoop::quit );
+    connect(this, &DIALOGProcedureCaller::dataSetSignal, &loop, &QEventLoop::quit);
     connect(&timer, &QTimer::timeout, &loop, &QEventLoop::quit );
     timer.start(timeout * 1000);
     loop.exec();

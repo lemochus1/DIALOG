@@ -47,7 +47,7 @@ void Receiver::run()
     receiverEventLoop = new QEventLoop();
     receiverEventLoop->exec();
 
-    qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "End of ServerReceiver EventLoop";
+    DIALOGCommon::logMessage("End of ServerReceiver EventLoop");
 }
 
 void Receiver::stop()
@@ -117,5 +117,5 @@ void Receiver::startThread()
 
 Receiver::~Receiver()
 {
-    qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << " " << "ServerReceiver destructor";
+    DIALOGCommon::logMessage("ServerReceiver destructor");
 }

@@ -15,9 +15,10 @@ public:
     explicit Procedure(QString procedureNameInit, QObject *parent = 0);
     ~Procedure();
     QString procedureName;
-    Process* sender;
-    void addSender(Process* senderProcess);
-    void removeSender();
+    //refactoring needed
+    QList<Process*> senders;
+    bool addSender(Process* senderProcess);
+    void removeSender(Process* senderProcess);
 };
 
 #endif // PROCEDURE_H

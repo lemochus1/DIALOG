@@ -55,10 +55,10 @@ class TestProcessResult:
     def addStandardMessage(self, messages_parts):
         addToList(self.standard_messages_parts, messages_parts)
 
-    def addIgnoreMessages(self, messages_parts):
+    def addIgnoredMessage(self, messages_parts):
         addToList(self.ignored_messages_parts, messages_parts)
 
-    def addErrorMessages(self, messages_parts):
+    def addErrorMessage(self, messages_parts):
         addToList(self.error_messages_parts, messages_parts)
 
     def __readInternalMessage(self, line):
@@ -173,7 +173,7 @@ class TestEvaluator:
             messages = [ERROR_OCCURED_FORMAT_MESSAGE.format(process.process_name)]
             for message in process.internal_error_messages:
                 messages.append(TAB + message)
-            logger.logAndPrintList(messages, 1)
+            self.logger.logAndPrintList(messages, 1)
             return True
         return False
 
@@ -221,7 +221,8 @@ class TestEvaluator:
             lost_messages_count = sender.sent_counter - receiver.received_counter
             if lost_messages_count:
                 self.logger.logAndPrint(NO_CONSISTENT_FORMAT_MESSAGE.format(receiver.process_name,
-                                                                            lost_messages_count), 1)
+                                                                            lost_messages_count),
+                                        1)
                 return False
             if receiver.api_received_messages != sender.api_sent_messages:
                 self.logger.logAndPrint(DEMAGED_MESSAGE_MESSAGE, 1)

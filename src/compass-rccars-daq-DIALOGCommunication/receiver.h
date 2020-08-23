@@ -17,6 +17,7 @@ class Receiver : public QThread
 public:
     Receiver(QString receiverAddressInit, quint16 receiverPortInit, Server* serverInit);
     ~Receiver();
+
     QString getReceiverAddress();
     quint16 getReceiverPort();
     bool anyOpenSockets();

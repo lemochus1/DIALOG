@@ -2,6 +2,9 @@
 #define DEFINE_H
 
 #include <QString>
+#include <QList>
+#include <QDebug>
+#include <QDateTime>
 
 enum ProcessType { ControlServer = 1, Custom = 2, Monitoring = 3 };
 
@@ -93,6 +96,19 @@ public:
         transformedMessage.append(QByteArray::fromHex(message.mid(40, 16).toUtf8()));
         transformedMessage.append(message.mid(56));
         return transformedMessage;
+    }
+
+    static void logMessage(const QString& message)
+    {
+        qDebug() << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss")
+                 << message;
+    }
+
+    static void logMessage(const QStringList& message)
+    {
+        for (const auto& messagePart : message) {
+            DIALOGCommon::logMessage(messagePart);
+        }
     }
 };
 

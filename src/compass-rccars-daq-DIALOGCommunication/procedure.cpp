@@ -6,17 +6,24 @@ Procedure::Procedure(QString procedureNameInit, QObject *parent) :
     procedureName = procedureNameInit;
 }
 
-void Procedure::addSender(Process* senderProcess)
+bool Procedure::addSender(Process* senderProcess)
 {
-    sender = senderProcess;
+    bool added = false;
+    if(!senders.contains(senderProcess))
+    {
+        senders.append(senderProcess);
+        added = true;
+    }
+    return added;
 }
 
-void Procedure::removeSender()
+void Procedure::removeSender(Process *senderProcess)
 {
-    sender = NULL;
+    if(senders.size() > 0)
+        senders.removeAll(senderProcess);
 }
+
 
 Procedure::~Procedure()
 {
-    sender = NULL;
 }

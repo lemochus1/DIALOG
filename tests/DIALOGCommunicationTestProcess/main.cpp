@@ -19,7 +19,7 @@ DIALOGProcess* process;
 void end(qint32 sig)
 {
     std::cout << "You killed me with " << sig << std::endl;
-    process->stopSlot();
+    process->stop();
 }
 
 QString LOG_FILE_PATH = "";
@@ -90,7 +90,7 @@ int main(int argc, char *argv[])
     }
 
     if (!LOG_FILE_PATH.isEmpty()) {
-        APIMessageLogger::getInstance().setLogFile(LOG_FILE_PATH);
+        APIMessageLogger::GetInstance().setLogFile(LOG_FILE_PATH);
         qInstallMessageHandler(&myMessageHandler);
     }
 

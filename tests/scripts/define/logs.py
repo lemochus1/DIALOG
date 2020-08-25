@@ -16,9 +16,10 @@ WARNING  = "WARNING:"
 CRITICAL = "CRITICAL:"
 FATAL    = "FATAL:"
 
-NO_HEART_BEAT =   "crashed (No HeartBeats have been received)."
-CONNECT_REFUSED = "The connection was refused by the"
-CONNECT_FAILED = "Connection to control server failed."
+NO_HEART_BEAT                   = "crashed (No HeartBeats have been received)."
+CONNECT_REFUSED                 = "The connection was refused by the"
+CONNECT_REFUSED_DEFAULT_HANDLER = "Server error received: CONNECTION_ERROR|CONNECTION_REFUSED_ERROR"
+CONNECT_FAILED                  = "Connection to control server failed."
 
 ERROR_MESSAGE_PARTS = [WARNING, CRITICAL, FATAL, NO_HEART_BEAT, CONNECT_REFUSED, CONNECT_FAILED]
 

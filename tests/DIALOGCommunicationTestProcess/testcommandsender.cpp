@@ -1,6 +1,6 @@
 #include "testcommandsender.h"
 
-TESTCommandSender::TESTCommandSender(QString nameInit, DIALOGProcess *processInit, int pauseInit, int repeatInit, int messageSizeInit)
+TESTCommandSender::TESTCommandSender(QString nameInit, int pauseInit, int repeatInit, int messageSizeInit)
     : QObject(nullptr),
       commandName(nameInit),
       pause(pauseInit),
@@ -10,8 +10,7 @@ TESTCommandSender::TESTCommandSender(QString nameInit, DIALOGProcess *processIni
       toAddress(false),
       size(messageSizeInit)
 {
-    process = processInit;
-    processName = process->getName();
+    processName = DIALOGProcess::GetInstance().getName();
 }
 
 void TESTCommandSender::setTargetAddress(QString processNameInit)
@@ -43,7 +42,7 @@ void TESTCommandSender::sendCommand()
     message.append(QString::number(sendCounter));
     if (size > 0) {
         message.append("-" + QString::number(size) + "-");
-        message.append(APIMessageLogger::getInstance().generateRandomString(size));
+        message.append(APIMessageLogger::GetInstance().generateRandomString(size));
     }
     if (sendCounter == repeat) {
         timer->stop();
@@ -52,18 +51,22 @@ void TESTCommandSender::sendCommand()
     }
     mutex.unlock();
 
-    QString asString = APIMessageLogger::getInstance().getMessageLogString(message);
+    QString asString = APIMessageLogger::GetInstance().getMessageLogString(message);
 
     if (toAddress) {
-        process->sendDirectCommandSlot(commandName, message, address, port);
-        std::cout << "Send command: " << commandName.toStdString() << " - " << asString.toStdString() << " to " << address.toStdString() << "|" << port << std::endl;
+        DIALOGProcess::GetInstance().sendDirectCommand(commandName, message, address, port);
+        std::cout << "Send command: " << commandName.toStdString()
+                  << " - " << asString.toStdString() << " to "
+                  << address.toStdString() << "|"
+                  << port << std::endl;
     } else if (toName) {
-        process->sendDirectCommandSlot(commandName, message, targetProcessName);
-        std::cout << "Send command: " << commandName.toStdString() << " - " << asString.toStdString() << std::endl;
+        DIALOGProcess::GetInstance().sendDirectCommand(commandName, message, targetProcessName);
+        std::cout << "Send command: " << commandName.toStdString()
+                  << " - " << asString.toStdString() << std::endl;
     } else {
-        process->sendCommandSlot(commandName, message);
-        std::cout << "Send command: " << commandName.toStdString() << " - " << asString.toStdString() << std::endl;
+        DIALOGProcess::GetInstance().sendCommand(commandName, message);
+        std::cout << "Send command: " << commandName.toStdString()
+                  << " - " << asString.toStdString() << std::endl;
     }
-
-    APIMessageLogger::getInstance().logCommandSent(commandName, asString);
+    APIMessageLogger::GetInstance().logCommandSent(commandName, asString);
 }

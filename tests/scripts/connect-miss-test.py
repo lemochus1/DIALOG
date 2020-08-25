@@ -38,13 +38,22 @@ class ConnectMissEvaluator(TestEvaluator):
         pass
 
     def setupProcessResults(self):
-        pass
+        for process_name in PROCESS_NAMES:
+            result_object = self.test_process_results[process_name][0]
+            result_object.addIgnoredMessage(CONNECT_REFUSED)
+            result_object.addIgnoredMessage(CONNECT_FAILED)
+            result_object.addIgnoredMessage(CONNECT_REFUSED_DEFAULT_HANDLER)
 
     def evaluate(self):
-        if self.noErrorOccured():
+        for process_name in PROCESS_NAMES:
+            result_object = self.test_process_results[process_name][0]
+            if result_object.connected_control_server:
+                self.logger.logAndPrint("Process {} signalizes it was connected "
+                                        "but no Control Server is running"
+                                        .format(result_object.process_name))
+                return False
             self.checkAllUnexpectedMessages()
-            return True
-        return False
+        return True
 
 #===================================================================================================
 # Scripting

@@ -24,16 +24,17 @@ void TESTServicePublisher::updateData()
     message.append(QString::number(updateCounter));
     if (size > 0) {
         message.append("-" + QString::number(size) + "-");
-        message.append(APIMessageLogger::getInstance().generateRandomString(size));
+        message.append(APIMessageLogger::GetInstance().generateRandomString(size));
     }
     updateCounter++;
     mutex.unlock();
-    QString asString = APIMessageLogger::getInstance().getMessageLogString(message);
+    QString asString = APIMessageLogger::GetInstance().getMessageLogString(message);
 
     updateDataSlot(message);
-    std::cout << "Send service data update: " << getName().toStdString() << " - " << asString.toStdString() << std::endl;
+    std::cout << "Send service data update: " << getName().toStdString()
+              << " - " << asString.toStdString() << std::endl;
 
-    APIMessageLogger::getInstance().logServiceDataSent(getName(), asString);
+    APIMessageLogger::GetInstance().logServiceDataSent(getName(), asString);
 
     if (updateCounter < repeat) {
         timer->singleShot(updatePeriod, this, &TESTServicePublisher::updateData);

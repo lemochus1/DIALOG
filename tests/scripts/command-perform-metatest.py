@@ -11,12 +11,12 @@ from define.arguments import *
 # Test
 HANDLER_COUNT          = [30]
 PAUSE_BETWEEN_MESSAGES = [10]
-MESSAGE_SIZE           = [100]
-MESSAGE_COUNT          = [1000]
+MESSAGE_SIZE           = [1000000]
+MESSAGE_COUNT          = [20]
 
 # Run
-CYCLE_COUNT = 2
-CYCLE_DURATION = 10000
+CYCLE_COUNT = 1
+CYCLE_DURATION = 20000
 
 RUNNING_SCRIPT = "command-basic-test.py"
 

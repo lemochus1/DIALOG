@@ -5,7 +5,7 @@
 #include "dialogapi.h"
 #include "apimessagelogger.h"
 
-class TESTCommandHandler : public DIALOGCommand
+class TESTCommandHandler : public DIALOGCommandHandler
 {
     Q_OBJECT
 public:

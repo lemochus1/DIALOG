@@ -33,7 +33,9 @@ class Server : public QThread
     void successfullyConnected();
     void connectionLost();
     void infoService(const QStringList &messageList);
-    void subscribeService(const QString &senderKey, const QStringList &messageList);
+    void subscribeService(const QString& senderAddress,
+                          quint16 senderPort,
+                          const QStringList &messageList);
     void unsubscribeService(const QStringList &messageList);
     void lostSender(const QStringList &messageList);
     void lostReceiver(const QStringList &messageList);
@@ -90,8 +92,8 @@ public:
            ProcessType processTypeInit,
            QString controlServerAddressInit,
            quint16 controlServerPortInit,
-           VirtualThread* senderThreadInit = NULL,
-           VirtualThread* receiverThreadInit = NULL);
+           VirtualThread* senderThreadInit = nullptr,
+           VirtualThread* receiverThreadInit = nullptr);
     ~Server();
     void run();
     void stop();//Asi nikde
@@ -107,8 +109,15 @@ public:
     QByteArray* messageHeader(QString key);//sender pouze...
     bool isProcessKnown(QString key);//jendou v socketu...
     Process* getProcess(QString key);// sender a socket...
+
+    Process* getProcess(const QString& address, int port, bool addIfMissing = true);
+
+    void removeReceiverSocket(Process* process, Socket *socket);
+
     void addProcess(QString key, Process* process);// casto...
     void removeProcess(QString key);
+
+    void setControlServerAddress(const QString address, quint16 port);
 
     QMutex processLock;// casto se pouziva v socketu...
 
@@ -118,7 +127,10 @@ public:
 
 public Q_SLOTS:
     //Napojuje se na to socket...
-    void messageReceivedSlot(QString senderAddress, quint16 senderPort, QByteArray* header, QByteArray* message = NULL);
+    void messageReceivedSlot(QString senderAddress,
+                             quint16 senderPort,
+                             QByteArray* header,
+                             QByteArray* message = nullptr);
     //Vola se z venku api v sender Processor thread
     void connectToControlServerSlot();
     //asi muze byt private
@@ -155,7 +167,10 @@ public Q_SLOTS:
     void hardStopSlot();
 
 Q_SIGNALS:
-    void sendMessageSignal(QString receiverAddress, quint16 receiverPort, QByteArray* header, QByteArray* message = NULL);
+    void sendMessageSignal(QString receiverAddress,
+                           quint16 receiverPort,
+                           QByteArray* header,
+                           QByteArray* message = nullptr);
     void sendHeartBeatSignal(QByteArray* message);
     void serverErrorSignal(QString error);
     void receiverStartedSignal();

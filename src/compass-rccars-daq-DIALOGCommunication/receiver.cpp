@@ -39,7 +39,8 @@ void Receiver::run()
     for(int i = 0; i < NUMBER_OF_RECEIVER_THREADS; i++)
     {
         receiverThreads[i] = new QThread();
-        QObject::connect(receiverThreads[i], &QThread::finished, receiverThreads[i], &QThread::deleteLater);
+        QObject::connect(receiverThreads[i], &QThread::finished,
+                         receiverThreads[i], &QThread::deleteLater);
 
         receiverThreads[i]->start();
     }
@@ -55,7 +56,7 @@ void Receiver::stop()
     receiverStarted = false;
     tcpServer->close();
 
-    while(anyOpenSockets())
+    while (anyOpenSockets())
     {
         closeAllSockets();
         receiverEventLoop->processEvents();
@@ -86,7 +87,7 @@ void Receiver::closeAllSockets()
 
 void Receiver::closeSocket(Socket* socket)
 {
-    if(socket != NULL)
+    if (socket != nullptr)
         Q_EMIT socket->disconnectSocketSignal();
 }
 
@@ -100,7 +101,7 @@ void Receiver::addSocket(Socket *socket)
 void Receiver::removeSocket(Socket *socket)
 {
     processSocketLock.lock();
-    if(sockets.size() > 0)
+    if (sockets.size() > 0)
         sockets.removeAll(socket);
     processSocketLock.unlock();
 }

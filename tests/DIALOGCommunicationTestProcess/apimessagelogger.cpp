@@ -13,7 +13,7 @@ const QString SERVICE = "service";
 const QString SERVICE_DATA = "service-data";
 
 
-APIMessageLogger &APIMessageLogger::getInstance()
+APIMessageLogger &APIMessageLogger::GetInstance()
 {
     static APIMessageLogger instance;
     return instance;

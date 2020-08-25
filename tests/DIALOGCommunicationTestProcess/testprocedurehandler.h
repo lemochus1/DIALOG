@@ -6,12 +6,12 @@
 #include "dialogapi.h"
 #include "apimessagelogger.h"
 
-class TESTProcedureHandler : public DIALOGProcedureHandler
+class TESTProcedurePublisher : public DIALOGProcedurePublisher
 {
     Q_OBJECT
 
 public:
-    TESTProcedureHandler(QString name, QString processNameInit, int callDurationInit);
+    TESTProcedurePublisher(QString name, QString processNameInit, int callDurationInit);
 
 public slots:
     void callRequestedSlot(QByteArray params, QString urlInit, int portInit) override;

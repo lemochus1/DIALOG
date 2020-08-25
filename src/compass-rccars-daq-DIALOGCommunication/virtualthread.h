@@ -18,7 +18,10 @@ public:
     Server *server;
 
 public Q_SLOTS:
-    virtual void messageReceivedSlot(QString senderName, quint16 senderPort, QByteArray* header, QByteArray* message);
+    virtual void messageReceivedSlot(QString senderName,
+                                     quint16 senderPort,
+                                     QByteArray* header,
+                                     QByteArray* message);
     virtual void serverErrorSlot(QString error);
     virtual void run();
     void startThread();
@@ -27,12 +30,19 @@ public Q_SLOTS:
 Q_SIGNALS:
     void sendServiceMessageSignal(QString serviceName, QByteArray* message);
     void sendCommandMessageSignal(QString commandName, QByteArray* message);
-    void sendDirectCommandMessageSignal(QString commandName, QByteArray* message, QString processName);
-    void sendDirectCommandUrlMessageSignal(QString commandName, QByteArray* message, QString url, int port);
-    void sendProcedureCallMessageSignal(QString procedureName, QByteArray* message);
-    void sendProcedureReturnMessageSignal(QString commandName, QByteArray* message, QString url, int port);
-
-    void notConnectedToControlServerErrorSignal(QString messageType, QString messageName);
+    void sendDirectCommandMessageSignal(QString commandName,
+                                        QByteArray* message,
+                                        QString processName);
+    void sendDirectCommandUrlMessageSignal(QString commandName,
+                                           QByteArray* message,
+                                           QString url,
+                                           int port);
+    void sendProcedureCallMessageSignal(QString procedureName,
+                                        QByteArray* message);
+    void sendProcedureReturnMessageSignal(QString commandName,
+                                          QByteArray* message,
+                                          QString url,
+                                          int port);
 
 private:
     QThread* mainThread;

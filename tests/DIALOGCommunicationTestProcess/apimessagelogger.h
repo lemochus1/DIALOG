@@ -11,7 +11,7 @@ class APIMessageLogger
 {
 
 public:
-    static APIMessageLogger &getInstance();
+    static APIMessageLogger &GetInstance();
 
     void setLogFile(const QString& file);
 

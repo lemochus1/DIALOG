@@ -1,6 +1,9 @@
 #include "tcpserver.h"
 
-TcpServer::TcpServer(QString receiverAddressInit, quint16 receiverPortInit, Receiver* receiverInit, QObject *parent)
+TcpServer::TcpServer(QString receiverAddressInit,
+                     quint16 receiverPortInit,
+                     Receiver* receiverInit,
+                     QObject *parent)
 :   QTcpServer(parent)
 {
     receiverAddress = receiverAddressInit;
@@ -42,21 +45,24 @@ void TcpServer::sessionOpened(quint16 receiverPortInit)
 
 void TcpServer::incomingConnection(qintptr socketDescriptor)
 {
-    if(receiver->receiverStarted)
+    if (receiver->receiverStarted)
     {
         Socket *socket = new Socket();
         socket->moveToThread(receiver->receiverThreads[receiver->currentThreadIndex]);
         receiver->currentThreadIndex++;
-        if(receiver->currentThreadIndex == NUMBER_OF_RECEIVER_THREADS)
+        if (receiver->currentThreadIndex == NUMBER_OF_RECEIVER_THREADS)
             receiver->currentThreadIndex = 0;
         receiver->numberOfOpenSockets++;
 
         socket->setServer(receiver->server);
         socket->setSocketDescriptor(socketDescriptor);
-        QObject::connect(receiver, &Receiver::setSocketSignal, socket, &Socket::setSocketSlot);
-        QObject::connect(socket, &Socket::destroyed, receiver, &Receiver::socketDisconnectedSlot, Qt::DirectConnection);
+        QObject::connect(receiver, &Receiver::setSocketSignal,
+                         socket, &Socket::setSocketSlot);
+        QObject::connect(socket, &Socket::destroyed, receiver,
+                         &Receiver::socketDisconnectedSlot, Qt::DirectConnection);
 
         Q_EMIT receiver->setSocketSignal();
-        QObject::disconnect(receiver, &Receiver::setSocketSignal, socket, &Socket::setSocketSlot);
+        QObject::disconnect(receiver, &Receiver::setSocketSignal,
+                            socket, &Socket::setSocketSlot);
     }
 }

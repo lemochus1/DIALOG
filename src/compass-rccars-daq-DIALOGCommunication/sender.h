@@ -13,7 +13,9 @@ class Socket;
 class Sender : public QThread
 {
     Q_OBJECT
-    void sendToHost(QString receiverAddress, quint16 receiverPort, MessageContainer* messageContainer);
+    void sendToHost(QString receiverAddress,
+                    quint16 receiverPort,
+                    MessageContainer* messageContainer);
 
 public:
     Sender(Server* serverInit);
@@ -27,15 +29,26 @@ public:
 
 public Q_SLOTS:
     void run();
-    void sendMessageSlot(QString receiverAddress, quint16 receiverPort, QByteArray* header, QByteArray* message = NULL);
+    void sendMessageSlot(QString receiverAddress,
+                         quint16 receiverPort,
+                         QByteArray* header,
+                         QByteArray* message = nullptr);
     void sendHeartBeatSlot(QByteArray* header);
     void sendServiceMessageSlot(QString serviceName, QByteArray* message);
     void sendCommandMessageSlot(QString commandName, QByteArray* message);
-    void sendDirectCommandMessageSlot(QString commandName, QByteArray* message, QString processName);
-    void sendDirectCommandUrlMessageSlot(QString commandName, QByteArray* message, QString url, int port);
+    void sendDirectCommandMessageSlot(QString commandName,
+                                      QByteArray* message,
+                                      QString processName);
+    void sendDirectCommandUrlMessageSlot(QString commandName,
+                                         QByteArray* message,
+                                         QString url,
+                                         int port);
 
     void callProcedureMessageSlot(QString procedureName, QByteArray* message);
-    void sendProcedureReturnMessageSlot(QString procedureName, QByteArray* message, QString url, int port);
+    void sendProcedureReturnMessageSlot(QString procedureName,
+                                        QByteArray* message,
+                                        QString url,
+                                        int port);
 
     void senderErrorSlot(QString error);
     void socketDisconnectedSlot();

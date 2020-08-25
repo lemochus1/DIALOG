@@ -12,7 +12,7 @@ class TESTProcedureCallController : public QObject
     Q_OBJECT
 
 public:
-    TESTProcedureCallController(QString nameInit, DIALOGProcess* processInit, QString targetProcessInit, int durationInit, int repeatInit);
+    TESTProcedureCallController(QString nameInit, QString targetProcessInit, int durationInit, int repeatInit);
 
     void start();
 
@@ -20,8 +20,6 @@ public slots:
     void callProcedure();
 
 private:
-    DIALOGProcess* process;
-
     QString name;
     QString processName;
     QString targetProcess;

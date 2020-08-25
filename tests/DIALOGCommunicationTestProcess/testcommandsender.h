@@ -10,7 +10,7 @@ class TESTCommandSender : public QObject
     Q_OBJECT
 
 public:
-    TESTCommandSender(QString nameInit, DIALOGProcess* processInit, int pauseInit = 1,
+    TESTCommandSender(QString nameInit, int pauseInit = 1,
                       int repeatInit = 1, int messageSizeInit = 0);
 
     void setTargetAddress(QString processNameInit);
@@ -26,7 +26,6 @@ signals:
 private:
     QString commandName;
 
-    DIALOGProcess* process;
     QString processName;
 
     int port;

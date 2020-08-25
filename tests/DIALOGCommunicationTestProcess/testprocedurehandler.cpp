@@ -1,7 +1,9 @@
 #include "testprocedurehandler.h"
 
-TESTProcedureHandler::TESTProcedureHandler(QString name, QString processNameInit, int callDurationInit)
-    : DIALOGProcedureHandler(name),
+TESTProcedurePublisher::TESTProcedurePublisher(QString name,
+                                           QString processNameInit,
+                                           int callDurationInit)
+    : DIALOGProcedurePublisher(name),
       callDuration(callDurationInit),
       callCounter(0),
       processName(processNameInit)
@@ -9,9 +11,9 @@ TESTProcedureHandler::TESTProcedureHandler(QString name, QString processNameInit
 
 }
 
-void TESTProcedureHandler::callRequestedSlot(QByteArray params, QString urlInit, int portInit)
+void TESTProcedurePublisher::callRequestedSlot(QByteArray params, QString addressInit, int portInit)
 {
-    APIMessageLogger::getInstance().logProcedureCallReceived(getName(), params);
+    APIMessageLogger::GetInstance().logProcedureCallReceived(getName(), params);
 
     QByteArray message;
     message.append(QString::number(callCounter));
@@ -19,8 +21,10 @@ void TESTProcedureHandler::callRequestedSlot(QByteArray params, QString urlInit,
 
     QThread::usleep(callDuration);
 
-    emit callFinishedSignal(getName(), message, urlInit, portInit);
+    emit callFinishedSignal(getName(), message, addressInit, portInit);
 
-    std::cout << "Send procedure data: " << getName().toStdString() << " - " << QString(message).toStdString() << " to " << urlInit.toStdString() <<"|" << portInit << std::endl;
-    APIMessageLogger::getInstance().logProcedureDataSent(getName(), params);
+    std::cout << "Send procedure data: " << getName().toStdString()
+              << " - " << QString(message).toStdString() << " to "
+              << addressInit.toStdString() <<"|" << portInit << std::endl;
+    APIMessageLogger::GetInstance().logProcedureDataSent(getName(), params);
 }

@@ -73,7 +73,7 @@ public:
         for(int i = 0; i < message.size(); i++)
         {
             QByteArray part = message.mid(i, 1);
-            if(i < 4 || (i > 7 && i < 12) || (i > 15 && i < 20))
+            if (i < 4 || (i > 7 && i < 12) || (i > 15 && i < 20))
             {
                 QByteArray toHex = part.toHex();
                 transformedMessage.append("\\x" + QString::fromUtf8(toHex.data(), toHex.size()).toUpper());
@@ -111,5 +111,22 @@ public:
         }
     }
 };
+
+/* MESSAGE TYPES */
+enum DIALOGMessageHandlerType {
+    CommandHandler = 0,
+    ServicePublisher = 1,
+    ServiceSubscriber = 2,
+    ProcedurePublisher = 3,
+    ProcedureCaller = 4
+};
+
+const QMap<DIALOGMessageHandlerType, QString> DIALOGMessageStrings {
+                                    {DIALOGMessageHandlerType::CommandHandler, "Command"},
+                                    {DIALOGMessageHandlerType::ServicePublisher, "Service"},
+                                    {DIALOGMessageHandlerType::ServiceSubscriber, "Service"},
+                                    {DIALOGMessageHandlerType::ProcedurePublisher, "Procedure"},
+                                    {DIALOGMessageHandlerType::ProcedureCaller, "Procedure"}};
+
 
 #endif // DEFINE_H

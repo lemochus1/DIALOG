@@ -10,11 +10,15 @@ class MessageContainer
     quint32 messageCounter;
 
 public:
-    explicit MessageContainer(QByteArray* headerInit, QByteArray* messageInit = NULL, quint32 messageCounterInit = 1);
+    explicit MessageContainer(QByteArray* headerInit,
+                              QByteArray* messageInit = nullptr,
+                              quint32 messageCounterInit = 1);
     ~MessageContainer();
+
     QByteArray* getHeader();
     QByteArray* getMessage();
     quint32 deleteMessage();
+    quint32 getSize();
 };
 
 #endif // MESSAGECONTAINER_H

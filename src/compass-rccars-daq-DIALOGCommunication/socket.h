@@ -19,10 +19,16 @@ class Socket : public QObject
 public:
     Socket(QObject *parent = 0);
     ~Socket();
-    void setMessage(MessageContainer* messageContainerInit, QString receiverAddressInit = "", quint16 receiverPortInit = 0);
+
+    void setMessage(MessageContainer* messageContainerInit,
+                    QString receiverAddressInit = "",
+                    quint16 receiverPortInit = 0);
     void setSocketDescriptor(qintptr socketDescriptorInit);
     void setServer(Server* serverInit);
     void setProcess(Process* processInit);
+    void setSender(const QByteArray& sender);
+    QByteArray getSender();
+
     bool disconnectionInitiated;
 
 public Q_SLOTS:
@@ -38,8 +44,14 @@ public Q_SLOTS:
 
 Q_SIGNALS:
     void newMessageSignal();
-    void messageReceivedSignal(QString senderAddress, quint16 senderPort, QByteArray* header, QByteArray* message);
-    void serverMessageReceivedSignal(QString senderAddress, quint16 senderPort, QByteArray* header, QByteArray* message = NULL);
+    void messageReceivedSignal(QString senderAddress,
+                               quint16 senderPort,
+                               QByteArray* header,
+                               QByteArray* message);
+    void serverMessageReceivedSignal(QString senderAddress,
+                                     quint16 senderPort,
+                                     QByteArray* header,
+                                     QByteArray* message = nullptr);
     void socketErrorSignal(QString error);
     void disconnectSocketSignal();
     void deleteSignal();
@@ -51,8 +63,6 @@ private:
     QTimer* checkIdleSocketTimer;
     QTimer* senderTimer;
 
-    quint32 messageSize;
-
     QString senderAddress;
     quint16 senderPort;
 
@@ -62,6 +72,7 @@ private:
     QTcpSocket* socket;
 
     qintptr socketDescriptor;
+    quint32 messageSize;
 
     ThreadSafeQList* messages;
     Server* server;

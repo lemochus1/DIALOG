@@ -9,7 +9,7 @@ Procedure::Procedure(QString procedureNameInit, QObject *parent) :
 bool Procedure::addSender(Process* senderProcess)
 {
     bool added = false;
-    if(!senders.contains(senderProcess))
+    if (!senders.contains(senderProcess))
     {
         senders.append(senderProcess);
         added = true;
@@ -19,7 +19,7 @@ bool Procedure::addSender(Process* senderProcess)
 
 void Procedure::removeSender(Process *senderProcess)
 {
-    if(senders.size() > 0)
+    if (senders.size() > 0)
         senders.removeAll(senderProcess);
 }
 

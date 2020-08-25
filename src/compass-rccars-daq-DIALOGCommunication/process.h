@@ -21,7 +21,7 @@ public:
                      QString processNameInit = "",
                      quint64 processPIDInit = 0);
     ~Process();
-    // server a az api
+
     bool addServiceAsSender(Service* service);
     void removeServiceAsSender(Service* service);
     bool addServiceAsReceiver(Service* service);

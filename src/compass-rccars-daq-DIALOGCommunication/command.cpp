@@ -9,7 +9,7 @@ Command::Command(QString commandNameInit, QObject *parent) :
 bool Command::addReceiver(Process* receiverProcess)
 {
     bool added = false;
-    if(!receivers.contains(receiverProcess))
+    if (!receivers.contains(receiverProcess))
     {
         receivers.append(receiverProcess);
         added = true;
@@ -19,7 +19,7 @@ bool Command::addReceiver(Process* receiverProcess)
 
 void Command::removeReceiver(Process *receiverProcess)
 {
-    if(receivers.size() > 0)
+    if (receivers.size() > 0)
         receivers.removeAll(receiverProcess);
 }
 

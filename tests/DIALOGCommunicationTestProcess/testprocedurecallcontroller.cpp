@@ -1,6 +1,6 @@
 #include "testprocedurecallcontroller.h"
 
-TESTProcedureCallController::TESTProcedureCallController(QString nameInit, DIALOGProcess* processInit, QString targetProcessInit, int durationInit, int repeatInit)
+TESTProcedureCallController::TESTProcedureCallController(QString nameInit, QString targetProcessInit, int durationInit, int repeatInit)
     : QObject(nullptr),
       name(nameInit),
       targetProcess(targetProcessInit),
@@ -8,7 +8,6 @@ TESTProcedureCallController::TESTProcedureCallController(QString nameInit, DIALO
       repeat(repeatInit),
       callCounter(0)
 {
-    process = processInit;
 }
 
 void TESTProcedureCallController::start()
@@ -22,22 +21,28 @@ void TESTProcedureCallController::callProcedure()
     QByteArray message;
     message.append(QString::number(callCounter));
 
-    DIALOGProcedureCaller* caller = process->callProcedure(name, message);
+    QSharedPointer<DIALOGProcedureCaller> caller = DIALOGProcess::GetInstance()
+                                                                      .callProcedure(name, message);
     if (caller) {
-        APIMessageLogger::getInstance().logProcedureCallSent(name, message);
+        APIMessageLogger::GetInstance().logProcedureCallSent(name, message);
         std::cout << "Called procedure: " << name.toStdString() << std::endl;
         bool ok = false;
         QByteArray data = caller->waitForData(ok);
         if (ok) {
-            APIMessageLogger::getInstance().logProcedureDataReceived(name, message);
-            std::cout << "Waited for call and received: " << name.toStdString() << " - " << QString(data).toStdString() << std::endl;
+            APIMessageLogger::GetInstance().logProcedureDataReceived(name, data);
+            std::cout << "Waited for call and received: "
+                      << name.toStdString()
+                      << " - "
+                      << QString(data).toStdString()
+                      << std::endl;
         } else {
             //logovani chyb zatim nenam... ale je to api takze by to chtelo...
-            std::cout << "No data received. Call ended by timeout: " << name.toStdString() << std::endl;
+            std::cout << "No data received. Call ended by timeout: "
+                      << name.toStdString()
+                      << std::endl;
         }
 
-        delete caller;
-        }
+    }
     else {
         std::cout << "Error while calling procedure: " << name.toStdString() << std::endl;
     }

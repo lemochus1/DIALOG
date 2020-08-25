@@ -14,20 +14,15 @@
 #include "testservicesubscriber.h"
 #include "apimessagelogger.h"
 
-class TESTProcessController : public QObject
+class TESTProcessController
 {
-    Q_OBJECT
-
-    DIALOGProcess* process;
 
 public:
-    explicit TESTProcessController(QObject *parent = nullptr);
+    TESTProcessController();
 
     bool setupProcess(const QString& xmlConfiguration);
     void startProcess();
     void startSenders();
-
-    QString getProcessName() const;
 
 private:
     bool readConfig(QXmlStreamReader& reader);
@@ -37,20 +32,16 @@ private:
     bool readRequestElement(QXmlStreamReader& reader);
     bool readSendElement(QXmlStreamReader& reader);
 
-    int tryGetIntAttribute(const QString& name, const QXmlStreamAttributes& attributes,
+    int tryGetIntAttribute(const QString& name,
+                           const QXmlStreamAttributes& attributes,
                            int defaultValue);
 
-    QList<TESTCommandHandler*> commandHandlers;
-    QList<TESTServicePublisher*> servicePublishers;
-    QList<TESTServiceSubscriber*> serviceSubscribers;
-    QList<TESTProcedureHandler*> procedureHandlers;
-    QList<TESTCommandSender*> commandSenders;//jak musi byt v cizim vlakne???
-    QMap<QString, TESTProcedureCallController*> procedureCallers;
-
-public slots:
-
-
-signals:
+    QList<QSharedPointer<DIALOGCommandHandler>> commandHandlers;
+    QList<QSharedPointer<TESTServicePublisher>> servicePublishers;
+    QList<QSharedPointer<TESTServiceSubscriber>> serviceSubscribers;
+    QList<QSharedPointer<TESTProcedurePublisher>> procedureHandlers;
+    QList<QSharedPointer<TESTCommandSender>> commandSenders;
+    QMap<QString, QSharedPointer<TESTProcedureCallController>> procedureCallers;
 
 };
 

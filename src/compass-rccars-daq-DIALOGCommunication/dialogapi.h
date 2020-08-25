@@ -6,95 +6,83 @@
 
 #include "server.h"
 #include "define.h"
+#include "processaddress.h"
 
 class DIALOGServicePublisher;
 class DIALOGServiceSubscriber;
 class DIALOGData;
-class DIALOGCommand;
+class DIALOGCommandHandler;
 class DIALOGProcedureCaller;
-class DIALOGProcedureHandler;
+class DIALOGProcedurePublisher;
 
-struct ProcessAddress
+class DIALOGProcess
 {
-    QString hostName;
-    quint16 port;
-    QHostAddress address;
-
-    ProcessAddress(const QString& hostNameInit = "", quint16 portInit = 0)
-        : hostName(hostNameInit),
-        port(portInit)
-    {
-        address = getAddress(hostNameInit);
-    }
-
-private:
-    QHostAddress getAddress(const QString hostName)
-    {
-        QHostInfo info = QHostInfo::fromName(hostName);
-        if (info.addresses().isEmpty()){
-            return QHostAddress();
-        }
-        return info.addresses().first();
-    }
-};
-
-class DIALOGProcess : public QObject
-{
-    Q_OBJECT
-
     class ReceiverThread;
     class SenderThread;
 
+    enum {NotConnectedError};
+
 public:
-    explicit DIALOGProcess(const QString& name, QObject* parent=nullptr);
-    virtual ~DIALOGProcess();
+    static DIALOGProcess &GetInstance();
 
     void start(QThread::Priority priority = QThread::NormalPriority);
-    void setControlServerAdress(QString address, int port);
+    void stop();
 
+    void setControlServerAddress(const QString& address, quint16 port);
+
+    bool setName(const QString& nameInit);
     QString getName() const;
-    
-    void registerCommand(DIALOGCommand* command);
-    DIALOGCommand* registerCommand(QString name);
 
-    void registerProcedure(DIALOGProcedureHandler* procedure);
-    DIALOGProcedureHandler* registerProcedure(QString name);
+    bool registerCommand(QWeakPointer<DIALOGCommandHandler> command);
+    QSharedPointer<DIALOGCommandHandler> registerCommand(const QString& name);
 
-    void registerService(DIALOGServicePublisher* publisher);
-    DIALOGServicePublisher* registerService(QString name);
+    bool registerProcedure(QWeakPointer<DIALOGProcedurePublisher> procedure);
+    QSharedPointer<DIALOGProcedurePublisher> registerProcedure(const QString& name);
 
-    void requestService(DIALOGServiceSubscriber* subscriber);
-    DIALOGServiceSubscriber* requestService(QString name);
+    bool registerService(QWeakPointer<DIALOGServicePublisher> publisher);
+    QSharedPointer<DIALOGServicePublisher> registerService(const QString& name);
 
-    DIALOGProcedureCaller* callProcedure(QString name, QByteArray message);
+    bool requestService(QWeakPointer<DIALOGServiceSubscriber> subscriber);
+    QSharedPointer<DIALOGServiceSubscriber> requestService(const QString& name);
+
+    QSharedPointer<DIALOGProcedureCaller> callProcedure(const QString& name, const QByteArray& params);
     //DIALOGProcedureCaller* callProcedure(QString name, QString process);
     //DIALOGProcedureCaller* callProcedure(QString name, QString url, int port);
 
-public Q_SLOTS:
+    bool sendCommand(const QString& name, const QByteArray& message);
+    bool sendDirectCommand(const QString& name,
+                           const QByteArray& message,
+                           const QString& processName);
 
-//    void registerProcedureSlot(DIALOGProcedureHandler* handler);
-//    DIALOGProcedureHandler registerProcedureSlot(QString name);
-    
-    void sendCommandSlot(QString name, QByteArray message);
-    void sendDirectCommandSlot(QString name, QByteArray message, QString processName);
-    void sendDirectCommandSlot(QString name, QByteArray message, QString url, int port);
-
-    void stopSlot();
-    
-Q_SIGNALS:
-    void stoppedSignal();
-    void serverDestroyed();
+    bool sendDirectCommand(const QString& name,
+                           const QByteArray& message,
+                           const QString& address,
+                           quint16 port);
 
 private:
-    Server* server;
-    SenderThread* sender;
-    ReceiverThread* receiver;
+    DIALOGProcess();
+    ~DIALOGProcess();
 
+    static DIALOGProcess* instance;
+
+    template<typename T>
+    bool handleMessageTypeImpl(QWeakPointer<T> handler, DIALOGMessageHandlerType type);
+
+    template<typename T>
+    QSharedPointer<T> handleMessageTypeImpl(const QString& name, DIALOGMessageHandlerType type);
+
+public:
+    DIALOGProcess(DIALOGProcess const&) = delete;
+    void operator=(DIALOGProcess const&) = delete;
+
+private:
     QString name;
 
-    ProcessAddress controlServer;
-    QString controlServerAddress;
-    int controlServerPort;
+    QPointer<Server> server;
+    QPointer<SenderThread> sender;
+    QPointer<ReceiverThread> receiver;
+
+    ProcessAddress controlAddress;
 };
 
 
@@ -106,19 +94,31 @@ public:
     ~ReceiverThread();
     void run() override;
 
-    void registerCommand(DIALOGCommand* command);
-    void registerService(DIALOGServiceSubscriber* subscriber);
-    void registerProcedureCaller(DIALOGProcedureCaller* caller);
-    void registerProcedureHandler(DIALOGProcedureHandler* handler);
+    bool registerMessageHandler(QWeakPointer<DIALOGCommandHandler> handler);
+    bool registerMessageHandler(QWeakPointer<DIALOGServiceSubscriber> handler);
+    bool registerMessageHandler(QWeakPointer<DIALOGServicePublisher> handler);
+    bool registerMessageHandler(QWeakPointer<DIALOGProcedureCaller> handler);
+    bool registerMessageHandler(QWeakPointer<DIALOGProcedurePublisher> handler);
 
 public slots:
-    void messageReceivedSlot(QString senderName, quint16 senderPort, QByteArray *header, QByteArray *message) override;     
+    void messageReceivedSlot(QString senderName,
+                             quint16 senderPort,
+                             QByteArray *header,
+                             QByteArray *message) override;
 
 private:
-    QMap<QString, DIALOGCommand*> commands;
-    QMap<QString, DIALOGServiceSubscriber*> subscribers;
-    QMap<QString, DIALOGProcedureCaller*> procedureCalls;
-    QMap<QString, DIALOGProcedureHandler*> procedureHandlers;
+    template<typename T>
+    bool registerMessageHandlerImpl(QWeakPointer<T> handler,
+                                    QMap<QString, QWeakPointer<T>>& map,
+                                    DIALOGMessageHandlerType type);
+
+    template<typename T>
+    bool invokeMethod(QWeakPointer<T> handler, const char *method, QByteArray * message);
+
+    QMap<QString, QWeakPointer<DIALOGCommandHandler>> commands;
+    QMap<QString, QWeakPointer<DIALOGServiceSubscriber>> serviceSubscribers;
+    QMap<QString, QWeakPointer<DIALOGProcedureCaller>> procedureCallers;
+    QMap<QString, QWeakPointer<DIALOGProcedurePublisher>> procedurePublishers;
 };
 
 
@@ -130,20 +130,26 @@ public:
     ~SenderThread();
     void run() override;
 
-    void addServiceToRequest(QString name);
-    void addServiceToRegister(DIALOGServicePublisher* publisher);
-    void addCommandToRegister(QString name);
-    void addProcedureToRegister(DIALOGProcedureHandler* handler);
+    bool registerMessageSender(QWeakPointer<DIALOGCommandHandler> sender);
+    bool registerMessageSender(QWeakPointer<DIALOGServiceSubscriber> sender);
+    bool registerMessageSender(QWeakPointer<DIALOGServicePublisher> sender);
+    bool registerMessageSender(QWeakPointer<DIALOGProcedureCaller> sender);
+    bool registerMessageSender(QWeakPointer<DIALOGProcedurePublisher> sender);
 
 public slots:
     void sendCommandSlot(QString name, QByteArray* message);
     void sendDirectCommandSlot(QString name, QByteArray* message, QString processName);
-    void sendDirectCommandUrlSlot(QString name, QByteArray* message, QString url, int port);
+    void sendDirectCommandUrlSlot(QString name, QByteArray* message, QString address, quint16 port);
     void sendServiceSlot(QString name, QByteArray message);
     void callProcedureSlot(QString name, QByteArray message);
-    void sendProcedureReturnSlot(QString name, QByteArray data, QString url, int port);
+    void sendProcedureReturnSlot(QString name, QByteArray data, QString address, int port);
 
 private:
+    template<typename T>
+    bool registerMessageSenderImpl(QWeakPointer<T> sender,
+                                   QStringList& list,
+                                   DIALOGMessageHandlerType type);
+
     QStringList servicesToRegister;
     QStringList servicesToRequest;
     QStringList commandsToRegister;
@@ -173,7 +179,8 @@ class DIALOGServicePublisher : public DIALOGData
     Q_OBJECT
     
 public:
-    explicit DIALOGServicePublisher(QString nameInit, QObject* parent=nullptr): DIALOGData(nameInit, parent) {}
+    explicit DIALOGServicePublisher(QString nameInit, QObject* parent=nullptr)
+        : DIALOGData(nameInit, parent) {}
     virtual ~DIALOGServicePublisher() {}
 
 public Q_SLOTS:
@@ -190,7 +197,8 @@ class DIALOGServiceSubscriber : public DIALOGData
     Q_OBJECT
     
 public:
-    explicit DIALOGServiceSubscriber(QString nameInit, QObject* parent=nullptr): DIALOGData(nameInit, parent) {}
+    explicit DIALOGServiceSubscriber(QString nameInit, QObject* parent=nullptr)
+        : DIALOGData(nameInit, parent) {}
     virtual ~DIALOGServiceSubscriber() {}
 
 public Q_SLOTS:
@@ -201,12 +209,12 @@ Q_SIGNALS:
     void dataUpdatedSignal(QByteArray data);
 };
 
-class DIALOGCommand : public QObject
+class DIALOGCommandHandler : public QObject
 {
     Q_OBJECT
     
 public:
-    DIALOGCommand(QString nameInit) {name = nameInit;}
+    DIALOGCommandHandler(QString nameInit) {name = nameInit;}
 
     QString getName(){return name;}
 
@@ -231,7 +239,8 @@ class DIALOGProcedureCaller : public QObject
     bool dataSet  = false;
 
 public:
-    explicit DIALOGProcedureCaller(QString nameInit, QObject* parent=nullptr): QObject(parent) {name = nameInit;}
+    explicit DIALOGProcedureCaller(QString nameInit, QObject* parent=nullptr)
+        : QObject(parent) {name = nameInit;}
     virtual ~DIALOGProcedureCaller() {}
 
     QByteArray waitForData(bool &ok, int timeout=10);
@@ -248,7 +257,7 @@ Q_SIGNALS:
     void dataSetSignal();
 };
 
-class DIALOGProcedureHandler : public QObject
+class DIALOGProcedurePublisher : public QObject
 {
     Q_OBJECT
 
@@ -260,8 +269,9 @@ class DIALOGProcedureHandler : public QObject
     int port;
     
 public:
-    explicit DIALOGProcedureHandler(QString nameInit, QObject* parent=nullptr): QObject(parent) {name = nameInit;}
-    virtual ~DIALOGProcedureHandler() {}
+    explicit DIALOGProcedurePublisher(QString nameInit, QObject* parent=nullptr)
+        : QObject(parent) {name = nameInit;}
+    virtual ~DIALOGProcedurePublisher() {}
 
     QString  getName() const;
 

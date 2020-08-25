@@ -3,7 +3,7 @@
 Service::Service(QString serviceNameInit)
 {
     serviceName = serviceNameInit;
-    sender = NULL;
+    sender = nullptr;
 }
 
 void Service::addSender(Process* senderProcess)
@@ -15,7 +15,7 @@ bool Service::addReceiver(Process* receiverProcess)
 {
     receiversLock.lock();
     bool added = false;
-    if(!receivers.contains(receiverProcess))
+    if (!receivers.contains(receiverProcess))
     {
         receivers.append(receiverProcess);
         added = true;
@@ -26,19 +26,19 @@ bool Service::addReceiver(Process* receiverProcess)
 
 void Service::removeSender()
 {
-    sender = NULL;
+    sender = nullptr;
 }
 
 void Service::removeReceiver(Process *receiverProcess)
 {
     receiversLock.lock();
-    if(receivers.size() > 0)
+    if (receivers.size() > 0)
         receivers.removeAll(receiverProcess);
     receiversLock.unlock();
 }
 
 Service::~Service()
 {
-    sender = NULL;
+    sender = nullptr;
     receivers.clear();
 }

@@ -29,6 +29,7 @@ LIBS += -L$${RCCARS_DAQ_HOME}/compass-rccars-daq-DAQDebugger -lDAQDebugger
 HEADERS       = \
     dialogapi.h \
     procedure.h \
+    processaddress.h \
                 sender.h \
                 receiver.h \
     socket.h \
@@ -45,6 +46,7 @@ HEADERS       = \
 SOURCES       = \
     dialogapi.cpp \
     procedure.cpp \
+    processaddress.cpp \
                 sender.cpp \
                 receiver.cpp \
     socket.cpp \

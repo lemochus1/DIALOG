@@ -11,7 +11,10 @@ void VirtualThread::setServer(Server *serverInit)
     server = serverInit;
 }
 
-void VirtualThread::messageReceivedSlot(QString senderName, quint16 senderPort, QByteArray* header, QByteArray* message)
+void VirtualThread::messageReceivedSlot(QString senderName,
+                                        quint16 senderPort,
+                                        QByteArray* header,
+                                        QByteArray* message)
 {
     DIALOGCommon::logMessage(QString("Received message from (%1, %2): %3, %4")
                             .arg(senderName)
@@ -23,6 +26,7 @@ void VirtualThread::messageReceivedSlot(QString senderName, quint16 senderPort, 
 
 void VirtualThread::serverErrorSlot(QString error)
 {
+    DIALOGCommon::logMessage("Server error received: " + error);
 }
 
 void VirtualThread::run()

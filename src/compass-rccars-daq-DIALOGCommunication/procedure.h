@@ -1,12 +1,9 @@
 #ifndef PROCEDURE_H
 #define PROCEDURE_H
 
-
 #include <QObject>
 #include "process.h"
 
-
-//pozdeji vice senderu...
 class Procedure : public QObject
 {
     Q_OBJECT

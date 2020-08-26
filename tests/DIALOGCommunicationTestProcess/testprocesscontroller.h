@@ -10,7 +10,7 @@
 #include "testcommandsender.h"
 #include "testprocedurecallcontroller.h"
 #include "testprocedurehandler.h"
-#include "testserviceprovider.h"
+#include "testServicePublisher.h"
 #include "testservicesubscriber.h"
 #include "apimessagelogger.h"
 
@@ -37,9 +37,9 @@ private:
                            int defaultValue);
 
     QList<QSharedPointer<DIALOGCommandHandler>> commandHandlers;
-    QList<QSharedPointer<TESTServicePublisher>> servicePublishers;
+    QList<QSharedPointer<TESTServicePublisher>> ServicePublishers;
     QList<QSharedPointer<TESTServiceSubscriber>> serviceSubscribers;
-    QList<QSharedPointer<TESTProcedurePublisher>> procedureHandlers;
+    QList<QSharedPointer<TESTProcedureProvider>> procedureHandlers;
     QList<QSharedPointer<TESTCommandSender>> commandSenders;
     QMap<QString, QSharedPointer<TESTProcedureCallController>> procedureCallers;
 

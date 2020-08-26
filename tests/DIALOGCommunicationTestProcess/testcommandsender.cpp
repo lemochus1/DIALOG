@@ -54,17 +54,17 @@ void TESTCommandSender::sendCommand()
     QString asString = APIMessageLogger::GetInstance().getMessageLogString(message);
 
     if (toAddress) {
-        DIALOGProcess::GetInstance().sendDirectCommand(commandName, message, address, port);
+        DIALOGProcess::GetInstance().trySendDirectCommand(commandName, message, address, port);
         std::cout << "Send command: " << commandName.toStdString()
                   << " - " << asString.toStdString() << " to "
                   << address.toStdString() << "|"
                   << port << std::endl;
     } else if (toName) {
-        DIALOGProcess::GetInstance().sendDirectCommand(commandName, message, targetProcessName);
+        DIALOGProcess::GetInstance().trySendDirectCommand(commandName, message, targetProcessName);
         std::cout << "Send command: " << commandName.toStdString()
                   << " - " << asString.toStdString() << std::endl;
     } else {
-        DIALOGProcess::GetInstance().sendCommand(commandName, message);
+        DIALOGProcess::GetInstance().trySendCommand(commandName, message);
         std::cout << "Send command: " << commandName.toStdString()
                   << " - " << asString.toStdString() << std::endl;
     }

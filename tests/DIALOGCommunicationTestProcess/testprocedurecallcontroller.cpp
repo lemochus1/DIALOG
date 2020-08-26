@@ -22,12 +22,12 @@ void TESTProcedureCallController::callProcedure()
     message.append(QString::number(callCounter));
 
     QSharedPointer<DIALOGProcedureCaller> caller = DIALOGProcess::GetInstance()
-                                                                      .callProcedure(name, message);
+                                                                      .tryCallProcedure(name, message);
     if (caller) {
         APIMessageLogger::GetInstance().logProcedureCallSent(name, message);
         std::cout << "Called procedure: " << name.toStdString() << std::endl;
         bool ok = false;
-        QByteArray data = caller->waitForData(ok);
+        QByteArray data = caller->waitForResponse(ok);
         if (ok) {
             APIMessageLogger::GetInstance().logProcedureDataReceived(name, data);
             std::cout << "Waited for call and received: "

@@ -1,5 +1,5 @@
-#ifndef TESTSERVICEPROVIDER_H
-#define TESTSERVICEPROVIDER_H
+#ifndef TESTServicePublisher_H
+#define TESTServicePublisher_H
 
 #include <QObject>
 #include "dialogapi.h"
@@ -31,4 +31,4 @@ private:
 
 };
 
-#endif // TESTSERVICEPROVIDER_H
+#endif // TESTServicePublisher_H

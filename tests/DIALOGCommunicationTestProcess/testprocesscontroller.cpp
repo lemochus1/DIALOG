@@ -46,8 +46,8 @@ void TESTProcessController::startSenders()
     for (auto sender : commandSenders) {
         sender->start();
     }
-    for (auto publisher : servicePublishers) {
-        publisher->start();
+    for (auto provider : ServicePublishers) {
+        provider->start();
     }
     for (auto caller : procedureCallers) {
         caller->start();
@@ -149,7 +149,7 @@ bool TESTProcessController::readRegisterElement(QXmlStreamReader &reader)
         if (COMMAND_ELEMENT == elementName) {
             QSharedPointer<TESTCommandHandler> command =
                     QSharedPointer<TESTCommandHandler>(new TESTCommandHandler(elementText));
-                    DIALOGProcess::GetInstance().registerCommand(command);
+                    DIALOGProcess::GetInstance().tryRegisterCommand(command);
             commandHandlers.append(command);
             APIMessageLogger::GetInstance().logCommandRegistered(elementText);
 
@@ -158,26 +158,26 @@ bool TESTProcessController::readRegisterElement(QXmlStreamReader &reader)
             int repeat = tryGetIntAttribute(REPEAT_ATTRIBUTE, attributes, 100);
             int size = tryGetIntAttribute(SIZE_ATTRIBUTE, attributes, 0);
 
-            QSharedPointer<TESTServicePublisher> publisher =
+            QSharedPointer<TESTServicePublisher> provider =
                     QSharedPointer<TESTServicePublisher>(new TESTServicePublisher(
                                                              elementText,
                                                              DIALOGProcess::GetInstance().getName(),
                                                              duration,
                                                              repeat,
                                                              size));
-            DIALOGProcess::GetInstance().registerService(publisher);
-            servicePublishers.append(publisher);
+            DIALOGProcess::GetInstance().tryRegisterService(provider);
+            ServicePublishers.append(provider);
             APIMessageLogger::GetInstance().logServiceRegistered(elementText);
 
         } else if (PROCEDURE_ELEMENT == elementName) {
             int duration = tryGetIntAttribute(DURATION_ATTRIBUTE, attributes, 1);
-            QSharedPointer<TESTProcedurePublisher> publisher =
-                    QSharedPointer<TESTProcedurePublisher>(
-                                new TESTProcedurePublisher(elementText,
+            QSharedPointer<TESTProcedureProvider> provider =
+                    QSharedPointer<TESTProcedureProvider>(
+                                new TESTProcedureProvider(elementText,
                                                            DIALOGProcess::GetInstance().getName(),
                                                            duration));
-            DIALOGProcess::GetInstance().registerProcedure(publisher);
-            procedureHandlers.append(publisher);
+            DIALOGProcess::GetInstance().tryRegisterProcedure(provider);
+            procedureHandlers.append(provider);
             APIMessageLogger::GetInstance().logProcedureRegistered(elementText);
 
         } else {
@@ -204,7 +204,7 @@ bool TESTProcessController::readRequestElement(QXmlStreamReader &reader)
         if (SERVICE_ELEMENT == reader.name()) {
             QSharedPointer<TESTServiceSubscriber> subscriber =
                     QSharedPointer<TESTServiceSubscriber>(new TESTServiceSubscriber(elementText));
-            DIALOGProcess::GetInstance().requestService(subscriber);
+            DIALOGProcess::GetInstance().tryRequestService(subscriber);
             serviceSubscribers.append(subscriber);
             APIMessageLogger::GetInstance().logServiceRequested(elementText);
         } else {

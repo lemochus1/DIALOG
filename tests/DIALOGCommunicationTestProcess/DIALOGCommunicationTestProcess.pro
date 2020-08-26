@@ -24,7 +24,7 @@ SOURCES += \
     testprocedurecallcontroller.cpp \
     testprocedurehandler.cpp \
     testprocesscontroller.cpp \
-    testserviceprovider.cpp \
+    testServicePublisher.cpp \
     testservicesubscriber.cpp
 
 # Default rules for deployment.
@@ -60,5 +60,5 @@ HEADERS += \
     testprocedurecallcontroller.h \
     testprocedurehandler.h \
     testprocesscontroller.h \
-    testserviceprovider.h \
+    testServicePublisher.h \
     testservicesubscriber.h

@@ -1,9 +1,9 @@
 #include "testprocedurehandler.h"
 
-TESTProcedurePublisher::TESTProcedurePublisher(QString name,
+TESTProcedureProvider::TESTProcedureProvider(QString name,
                                            QString processNameInit,
                                            int callDurationInit)
-    : DIALOGProcedurePublisher(name),
+    : DIALOGProcedureProvider(name),
       callDuration(callDurationInit),
       callCounter(0),
       processName(processNameInit)
@@ -11,7 +11,7 @@ TESTProcedurePublisher::TESTProcedurePublisher(QString name,
 
 }
 
-void TESTProcedurePublisher::callRequestedSlot(QByteArray params, QString addressInit, int portInit)
+void TESTProcedureProvider::callRequestedSlot(QByteArray params, QString addressInit, int portInit)
 {
     APIMessageLogger::GetInstance().logProcedureCallReceived(getName(), params);
 

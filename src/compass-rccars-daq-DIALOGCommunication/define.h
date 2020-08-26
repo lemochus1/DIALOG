@@ -117,7 +117,7 @@ enum DIALOGMessageHandlerType {
     CommandHandler = 0,
     ServicePublisher = 1,
     ServiceSubscriber = 2,
-    ProcedurePublisher = 3,
+    ProcedureProvider = 3,
     ProcedureCaller = 4
 };
 
@@ -125,8 +125,13 @@ const QMap<DIALOGMessageHandlerType, QString> DIALOGMessageStrings {
                                     {DIALOGMessageHandlerType::CommandHandler, "Command"},
                                     {DIALOGMessageHandlerType::ServicePublisher, "Service"},
                                     {DIALOGMessageHandlerType::ServiceSubscriber, "Service"},
-                                    {DIALOGMessageHandlerType::ProcedurePublisher, "Procedure"},
+                                    {DIALOGMessageHandlerType::ProcedureProvider, "Procedure"},
                                     {DIALOGMessageHandlerType::ProcedureCaller, "Procedure"}};
+
+enum DIALOGErrorCode {
+    NoError = 0,
+    LostControlServer = 1,
+};
 
 
 #endif // DEFINE_H

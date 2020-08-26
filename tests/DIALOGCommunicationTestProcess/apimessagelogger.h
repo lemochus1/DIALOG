@@ -38,8 +38,6 @@ public:
 private:
     APIMessageLogger();
 
-    static APIMessageLogger* instance;
-
 public:
     APIMessageLogger(APIMessageLogger const&) = delete;
     void operator=(APIMessageLogger const&) = delete;

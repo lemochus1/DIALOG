@@ -737,9 +737,9 @@ void Server::run()
                          sender, &Sender::sendServiceMessageSlot, Qt::DirectConnection);
         QObject::connect(senderThread, &VirtualThread::sendCommandMessageSignal,
                          sender, &Sender::sendCommandMessageSlot, Qt::DirectConnection);
-        QObject::connect(senderThread, &VirtualThread::sendDirectCommandMessageSignal,
+        QObject::connect(senderThread, &VirtualThread::sendDirectCommandNameMessageSignal,
                          sender, &Sender::sendDirectCommandMessageSlot, Qt::DirectConnection);
-        QObject::connect(senderThread, &VirtualThread::sendDirectCommandUrlMessageSignal,
+        QObject::connect(senderThread, &VirtualThread::sendDirectCommandAddressMessageSignal,
                          sender, &Sender::sendDirectCommandUrlMessageSlot, Qt::DirectConnection);
         QObject::connect(senderThread, &VirtualThread::sendProcedureCallMessageSignal,
                          sender, &Sender::callProcedureMessageSlot, Qt::DirectConnection);

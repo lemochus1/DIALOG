@@ -30,10 +30,10 @@ public Q_SLOTS:
 Q_SIGNALS:
     void sendServiceMessageSignal(QString serviceName, QByteArray* message);
     void sendCommandMessageSignal(QString commandName, QByteArray* message);
-    void sendDirectCommandMessageSignal(QString commandName,
+    void sendDirectCommandNameMessageSignal(QString commandName,
                                         QByteArray* message,
                                         QString processName);
-    void sendDirectCommandUrlMessageSignal(QString commandName,
+    void sendDirectCommandAddressMessageSignal(QString commandName,
                                            QByteArray* message,
                                            QString url,
                                            int port);

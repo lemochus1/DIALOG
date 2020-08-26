@@ -1,4 +1,4 @@
-#include "testserviceprovider.h"
+#include "testServicePublisher.h"
 
 TESTServicePublisher::TESTServicePublisher(QString nameInit, QString processNameInit, int updatePeriodInit, int repeatInit, int messageSizeInit)
     : DIALOGServicePublisher(nameInit),

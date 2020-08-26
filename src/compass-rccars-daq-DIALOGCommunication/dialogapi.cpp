@@ -82,68 +82,73 @@ QString DIALOGProcess::getName() const
     return name;
 }
 
-bool DIALOGProcess::registerCommand(QWeakPointer<DIALOGCommandHandler> command)
+QPointer<Server> DIALOGProcess::getServer() const
 {
-    return handleMessageTypeImpl<DIALOGCommandHandler>(command,
+    return server;
+}
+
+bool DIALOGProcess::tryRegisterCommand(QWeakPointer<DIALOGCommandHandler> command)
+{
+    return tryRegisterTypeImpl<DIALOGCommandHandler>(command,
                                                        DIALOGMessageHandlerType::CommandHandler);
 }
 
-QSharedPointer<DIALOGCommandHandler> DIALOGProcess::registerCommand(const QString& name)
+QSharedPointer<DIALOGCommandHandler> DIALOGProcess::tryRegisterCommand(const QString& name)
 {
-    return handleMessageTypeImpl<DIALOGCommandHandler>(name,
+    return tryRegisterTypeImpl<DIALOGCommandHandler>(name,
                                                        DIALOGMessageHandlerType::CommandHandler);
 }
 
-bool DIALOGProcess::registerProcedure(QWeakPointer<DIALOGProcedurePublisher> procedure)
+bool DIALOGProcess::tryRegisterProcedure(QWeakPointer<DIALOGProcedureProvider> procedure)
 {
-    return handleMessageTypeImpl<DIALOGProcedurePublisher>(procedure,
-                                                    DIALOGMessageHandlerType::ProcedurePublisher);
+    return tryRegisterTypeImpl<DIALOGProcedureProvider>(procedure,
+                                                    DIALOGMessageHandlerType::ProcedureProvider);
 }
 
-QSharedPointer<DIALOGProcedurePublisher> DIALOGProcess::registerProcedure(const QString &name)
+QSharedPointer<DIALOGProcedureProvider> DIALOGProcess::tryRegisterProcedure(const QString &name)
 {
-    return handleMessageTypeImpl<DIALOGProcedurePublisher>(name,
-                                                    DIALOGMessageHandlerType::ProcedurePublisher);
+    return tryRegisterTypeImpl<DIALOGProcedureProvider>(name,
+                                                    DIALOGMessageHandlerType::ProcedureProvider);
 }
 
-bool DIALOGProcess::registerService(QWeakPointer<DIALOGServicePublisher> publisher)
+bool DIALOGProcess::tryRegisterService(QWeakPointer<DIALOGServicePublisher> provider)
 {
-    return handleMessageTypeImpl<DIALOGServicePublisher>(publisher,
+    return tryRegisterTypeImpl<DIALOGServicePublisher>(provider,
                                                          DIALOGMessageHandlerType::ServicePublisher);
 }
 
-QSharedPointer<DIALOGServicePublisher> DIALOGProcess::registerService(const QString &name)
+QSharedPointer<DIALOGServicePublisher> DIALOGProcess::tryRegisterService(const QString &name)
 {
-    return handleMessageTypeImpl<DIALOGServicePublisher>(name,
-                                                         DIALOGMessageHandlerType::ServicePublisher);
+    return tryRegisterTypeImpl<DIALOGServicePublisher>(name,
+                                                        DIALOGMessageHandlerType::ServicePublisher);
 }
 
-bool DIALOGProcess::requestService(QWeakPointer<DIALOGServiceSubscriber> subscriber)
+bool DIALOGProcess::tryRequestService(QWeakPointer<DIALOGServiceSubscriber> subscriber)
 {
-    return handleMessageTypeImpl<DIALOGServiceSubscriber>(subscriber,
+    return tryRegisterTypeImpl<DIALOGServiceSubscriber>(subscriber,
                                                        DIALOGMessageHandlerType::ServiceSubscriber);
 }
 
-QSharedPointer<DIALOGServiceSubscriber> DIALOGProcess::requestService(const QString &name)
+QSharedPointer<DIALOGServiceSubscriber> DIALOGProcess::tryRequestService(const QString &name)
 {
-    return handleMessageTypeImpl<DIALOGServiceSubscriber>(name,
+    return tryRegisterTypeImpl<DIALOGServiceSubscriber>(name,
                                                        DIALOGMessageHandlerType::ServiceSubscriber);
 }
 
-QSharedPointer<DIALOGProcedureCaller> DIALOGProcess::callProcedure(const QString &name,
+QSharedPointer<DIALOGProcedureCaller> DIALOGProcess::tryCallProcedure(const QString &name,
                                                                    const QByteArray &params)
 {
     if (server && server->waitForConnectionToControlServer()) {
         QSharedPointer<DIALOGProcedureCaller> caller =
                 QSharedPointer<DIALOGProcedureCaller>(new DIALOGProcedureCaller(name));
-        receiver->registerMessageHandler(caller.toWeakRef());
+        receiver->tryRegisterMessageHandler(caller.toWeakRef());
         sender->callProcedureSlot(name, params);
         return caller;
     }
     return nullptr;
 }
 
-bool DIALOGProcess::sendCommand(const QString &name, const QByteArray &message)
+bool DIALOGProcess::trySendCommand(const QString &name, const QByteArray &message)
 {
     if (server->waitForConnectionToControlServer()) {
         QByteArray* commandMessage = new QByteArray();
@@ -153,23 +158,23 @@ bool DIALOGProcess::sendCommand(const QString &name, const QByteArray &message)
     return true;
 }
 
-bool DIALOGProcess::sendDirectCommand(const QString &name,
+bool DIALOGProcess::trySendDirectCommand(const QString &name,
                                       const QByteArray &message,
                                       const QString &processName)
 {
     if (server && server->waitForConnectionToControlServer()) {
         QByteArray* commandMessage = new QByteArray();
         commandMessage->append(message);
-        sender->sendDirectCommandSlot(name, commandMessage, processName);
+        sender->sendDirectCommandNameSlot(name, commandMessage, processName);
     }
     return true;
 }
 
-bool DIALOGProcess::sendDirectCommand(const QString &name, const QByteArray &message, const QString &address, quint16 port)
+bool DIALOGProcess::trySendDirectCommand(const QString &name, const QByteArray &message, const QString &address, quint16 port)
 {
     QByteArray* commandMessage = new QByteArray();
     commandMessage->append(message);
-    sender->sendDirectCommandUrlSlot(name, commandMessage, address, port);
+    sender->sendDirectCommandAddressSlot(name, commandMessage, address, port);
     return true;
 }
 
@@ -204,7 +209,7 @@ void DIALOGProcess::SenderThread::run()
     DIALOGCommon::logMessage("End of Sender EventLoop");
 }
 
-bool DIALOGProcess::SenderThread::registerMessageSender(QWeakPointer<DIALOGCommandHandler> sender)
+bool DIALOGProcess::SenderThread::tryRegisterMessageSender(QWeakPointer<DIALOGCommandHandler> sender)
 {
     return registerMessageSenderImpl<DIALOGCommandHandler>(
                                                          sender,
@@ -212,7 +217,7 @@ bool DIALOGProcess::SenderThread::registerMessageSender(QWeakPointer<DIALOGComma
                                                          DIALOGMessageHandlerType::CommandHandler);
 }
 
-bool DIALOGProcess::SenderThread::registerMessageSender(QWeakPointer<DIALOGServiceSubscriber> sender)
+bool DIALOGProcess::SenderThread::tryRegisterMessageSender(QWeakPointer<DIALOGServiceSubscriber> sender)
 {
     return registerMessageSenderImpl<DIALOGServiceSubscriber>(
                                                        sender,
@@ -220,7 +225,7 @@ bool DIALOGProcess::SenderThread::registerMessageSender(QWeakPointer<DIALOGServi
                                                        DIALOGMessageHandlerType::ServiceSubscriber);
 }
 
-bool DIALOGProcess::SenderThread::registerMessageSender(QWeakPointer<DIALOGServicePublisher> sender)
+bool DIALOGProcess::SenderThread::tryRegisterMessageSender(QWeakPointer<DIALOGServicePublisher> sender)
 {
     if (registerMessageSenderImpl<DIALOGServicePublisher>(
                                                      sender,
@@ -234,21 +239,21 @@ bool DIALOGProcess::SenderThread::registerMessageSender(QWeakPointer<DIALOGServi
     return false;
 }
 
-bool DIALOGProcess::SenderThread::registerMessageSender(QWeakPointer<DIALOGProcedureCaller> sender)
+bool DIALOGProcess::SenderThread::tryRegisterMessageSender(QWeakPointer<DIALOGProcedureCaller> sender)
 {
     // Sender thread does not work with procedure callers yet.
     return true;
 }
 
-bool DIALOGProcess::SenderThread::registerMessageSender(QWeakPointer<DIALOGProcedurePublisher> sender)
+bool DIALOGProcess::SenderThread::tryRegisterMessageSender(QWeakPointer<DIALOGProcedureProvider> sender)
 {
-    if (registerMessageSenderImpl<DIALOGProcedurePublisher>(
+    if (registerMessageSenderImpl<DIALOGProcedureProvider>(
                                                      sender,
                                                      proceduresToRegister,
-                                                     DIALOGMessageHandlerType::ProcedurePublisher))
+                                                     DIALOGMessageHandlerType::ProcedureProvider))
     {
-        connect(sender.toStrongRef().data(), &DIALOGProcedurePublisher::callFinishedSignal,
-                this, &SenderThread::sendProcedureReturnSlot);
+        connect(sender.toStrongRef().data(), &DIALOGProcedureProvider::callFinishedSignal,
+                this, &SenderThread::sendProcedureReturnValueSlot);
         return true;
     }
     return false;
@@ -259,19 +264,19 @@ void DIALOGProcess::SenderThread::sendCommandSlot(QString name, QByteArray *mess
     emit sendCommandMessageSignal(name, message);
 }
 
-void DIALOGProcess::SenderThread::sendDirectCommandSlot(QString name,
+void DIALOGProcess::SenderThread::sendDirectCommandNameSlot(QString name,
                                                         QByteArray *message,
                                                         QString processName)
 {
-    emit sendDirectCommandMessageSignal(name, message, processName);
+    emit sendDirectCommandNameMessageSignal(name, message, processName);
 }
 
-void DIALOGProcess::SenderThread::sendDirectCommandUrlSlot(QString name,
-                                                           QByteArray *message,
-                                                           QString address,
-                                                           quint16 port)
+void DIALOGProcess::SenderThread::sendDirectCommandAddressSlot(QString name,
+                                                               QByteArray *message,
+                                                               QString address,
+                                                               quint16 port)
 {
-    emit sendDirectCommandUrlMessageSignal(name, message, address, port);
+    emit sendDirectCommandAddressMessageSignal(name, message, address, port);
 }
 
 void DIALOGProcess::SenderThread::sendServiceSlot(QString name, QByteArray message)
@@ -294,10 +299,10 @@ void DIALOGProcess::SenderThread::callProcedureSlot(QString name, QByteArray mes
     }
 }
 
-void DIALOGProcess::SenderThread::sendProcedureReturnSlot(QString name,
-                                                          QByteArray data,
-                                                          QString address,
-                                                          int port)
+void DIALOGProcess::SenderThread::sendProcedureReturnValueSlot(QString name,
+                                                               QByteArray data,
+                                                               QString address,
+                                                               quint16 port)
 {
     QByteArray* serviceMessage = new QByteArray();
     serviceMessage->append(data);
@@ -317,7 +322,7 @@ void DIALOGProcess::ReceiverThread::run()
     DIALOGCommon::logMessage("End of Receiver EventLoop");
 }
 
-bool DIALOGProcess::ReceiverThread::registerMessageHandler(
+bool DIALOGProcess::ReceiverThread::tryRegisterMessageHandler(
                                                          QWeakPointer<DIALOGCommandHandler> handler)
 {
     return registerMessageHandlerImpl<DIALOGCommandHandler>(handler,
@@ -325,7 +330,7 @@ bool DIALOGProcess::ReceiverThread::registerMessageHandler(
                                                           DIALOGMessageHandlerType::CommandHandler);
 }
 
-bool DIALOGProcess::ReceiverThread::registerMessageHandler(
+bool DIALOGProcess::ReceiverThread::tryRegisterMessageHandler(
                                                       QWeakPointer<DIALOGServiceSubscriber> handler)
 {
     return registerMessageHandlerImpl<DIALOGServiceSubscriber>(handler,
@@ -333,14 +338,14 @@ bool DIALOGProcess::ReceiverThread::registerMessageHandler(
                                                        DIALOGMessageHandlerType::ServiceSubscriber);
 }
 
-bool DIALOGProcess::ReceiverThread::registerMessageHandler(
+bool DIALOGProcess::ReceiverThread::tryRegisterMessageHandler(
                                                        QWeakPointer<DIALOGServicePublisher> handler)
 {
-    // Receiver does not work with service publishers yet.
+    // Receiver does not work with service providers yet.
     return true;
 }
 
-bool DIALOGProcess::ReceiverThread::registerMessageHandler(
+bool DIALOGProcess::ReceiverThread::tryRegisterMessageHandler(
                                                         QWeakPointer<DIALOGProcedureCaller> handler)
 {
     QString name = tryGetName<DIALOGProcedureCaller>(handler);
@@ -353,11 +358,11 @@ bool DIALOGProcess::ReceiverThread::registerMessageHandler(
     return true;
 }
 
-bool DIALOGProcess::ReceiverThread::registerMessageHandler(QWeakPointer<DIALOGProcedurePublisher> handler)
+bool DIALOGProcess::ReceiverThread::tryRegisterMessageHandler(QWeakPointer<DIALOGProcedureProvider> handler)
 {
-    return registerMessageHandlerImpl<DIALOGProcedurePublisher>(handler,
-                                                               procedurePublishers,
-                                                       DIALOGMessageHandlerType::ProcedurePublisher);
+    return registerMessageHandlerImpl<DIALOGProcedureProvider>(handler,
+                                                               procedureProviders,
+                                                       DIALOGMessageHandlerType::ProcedureProvider);
 }
 
 void DIALOGProcess::ReceiverThread::messageReceivedSlot(QString senderName,
@@ -407,9 +412,9 @@ void DIALOGProcess::ReceiverThread::messageReceivedSlot(QString senderName,
         if (headerList[1] == PROCEDURE_CALL)
         {
             QString procedure = headerList[2];
-            if (procedurePublishers.contains(procedure))
+            if (procedureProviders.contains(procedure))
             {
-                QMetaObject::invokeMethod(procedurePublishers[procedure].toStrongRef().data(),
+                QMetaObject::invokeMethod(procedureProviders[procedure].toStrongRef().data(),
                                           "callRequestedSlot",
                                           Q_ARG(QByteArray, *message),
                                           Q_ARG(QString, headerList[3]),
@@ -444,84 +449,97 @@ void DIALOGProcess::ReceiverThread::messageReceivedSlot(QString senderName,
     delete message;
 }
 
-void DIALOGCommandHandler::commandReceivedSlot(QByteArray message)
+DIALOGCommandHandler::DIALOGCommandHandler(const QString &nameInit, QObject *parent)
+    : DIALOGNamedData(nameInit, parent)
+{
+
+}
+
+void DIALOGCommandHandler::commandReceivedSlot(const QByteArray &message)
 {
     emit commandReceivedSignal(message);
 }
 
-void DIALOGServicePublisher::updateDataSlot(QByteArray dataInit)
+DIALOGServicePublisher::DIALOGServicePublisher(const QString &nameInit, QObject *parent)
+    : DIALOGNamedData(nameInit, parent)
+{
+
+}
+
+void DIALOGServicePublisher::updateDataSlot(const QByteArray &dataInit)
 {
     data = dataInit;
     emit dataUpdatedSignal(name, data);
 }
 
-void DIALOGServiceSubscriber::dataUpdatedSlot(QByteArray dataInit)
+DIALOGServiceSubscriber::DIALOGServiceSubscriber(const QString &nameInit, QObject *parent)
+    : DIALOGNamedData(nameInit, parent)
+{
+
+}
+
+void DIALOGServiceSubscriber::dataUpdatedSlot(const QByteArray &dataInit)
 {
     data = dataInit;
     emit dataUpdatedSignal(data);
 }
 
-QByteArray DIALOGProcedureCaller::waitForData(bool &ok, int timeout)
+DIALOGProcedureCaller::DIALOGProcedureCaller(const QString &nameInit,
+                                             const QByteArray &paramsInit,
+                                             QObject *parent)
+    : DIALOGNamedData(nameInit, parent),
+      params(paramsInit)
 {
-    if (dataSet) {
+
+}
+
+QByteArray DIALOGProcedureCaller::waitForResponse(bool &ok, int sTimeout)
+{
+    if (responseReceived) {
         return tryGetData();
     }
 
     QTimer timer;
     timer.setSingleShot(true);
     QEventLoop loop;
-    connect(this, &DIALOGProcedureCaller::dataSetSignal, &loop, &QEventLoop::quit);
+    connect(this, &DIALOGProcedureCaller::responseReceivedSignal, &loop, &QEventLoop::quit);
     connect(&timer, &QTimer::timeout, &loop, &QEventLoop::quit );
-    timer.start(timeout * 1000);
+    timer.start(sTimeout * 1000);
     loop.exec();
 
-    ok = dataSet;
+    ok = responseReceived;
     return data;
 }
 
-QByteArray DIALOGProcedureCaller::tryGetData()
-{
-    QByteArray value;
-    mutex.lock();
-    value = data;
-    mutex.unlock();
-    return value;
-}
-
-QString DIALOGProcedureCaller::getName() const
-{
-    return name;
-}
-
-void DIALOGProcedureCaller::setDataSlot(QByteArray dataInit)
+void DIALOGProcedureCaller::responseReceivedSlot(const QByteArray& response)
 {
     mutex.lock();
-    data = dataInit;
-    dataSet = true;
+    data = response;
+    hasResponse = true;
     mutex.unlock();
-    emit dataSetSignal();
+    emit responseReceivedSignal(response);
 }
 
-QString DIALOGProcedurePublisher::getName() const
+
+DIALOGProcedureProvider::DIALOGProcedureProvider(const QString& nameInit, QObject *parent)
+    : DIALOGNamedData(nameInit, parent)
 {
-    return name;
+
 }
 
-void DIALOGProcedurePublisher::callRequestedSlot(QByteArray params, QString urlInit, int portInit)
+void DIALOGProcedureProvider::callRequestedSlot(const QByteArray &params)
 {
-    url = urlInit;
-    port = portInit;
     emit callRequestedSignal(params);
 }
 
-void DIALOGProcedurePublisher::callFinishedSlot(QByteArray dataInit)
+void DIALOGProcedureProvider::callFinishedSlot(const QByteArray &response)
 {
-    data = dataInit;
-    emit callFinishedSignal(name, dataInit, url, port);
+    data = response;
+    emit callFinishedSignal(name, response, address, port);
 }
 
 template<typename T>
-bool DIALOGProcess::handleMessageTypeImpl(QWeakPointer<T> handler, DIALOGMessageHandlerType type)
+bool DIALOGProcess::tryRegisterTypeImpl(QWeakPointer<T> handler, DIALOGMessageHandlerType type)
 {
     auto strongHandler = handler.toStrongRef();
     if (strongHandler)
@@ -532,9 +550,9 @@ bool DIALOGProcess::handleMessageTypeImpl(QWeakPointer<T> handler, DIALOGMessage
 //            QMetaObject::invokeMethod(server, "registerCommandSlot", Q_ARG(QString, name));
 //        }
 
-        if (sender->registerMessageSender(handler))
+        if (sender->tryRegisterMessageSender(handler))
         {
-            return receiver->registerMessageHandler(handler);
+            return receiver->tryRegisterMessageHandler(handler);
         }
         qWarning() << QString("%1 %2 has been already registered.")
                       .arg(DIALOGMessageStrings[type])
@@ -547,11 +565,11 @@ bool DIALOGProcess::handleMessageTypeImpl(QWeakPointer<T> handler, DIALOGMessage
 }
 
 template<typename T>
-QSharedPointer<T> DIALOGProcess::handleMessageTypeImpl(const QString &name,
+QSharedPointer<T> DIALOGProcess::tryRegisterTypeImpl(const QString &name,
                                                        DIALOGMessageHandlerType type)
 {
     QSharedPointer<T> handler = QSharedPointer<T>(new T(name), deleteLater);
-    if (handleMessageTypeImpl<T>(handler, type))
+    if (tryRegisterTypeImpl<T>(handler, type))
     {
         return handler;
     }
@@ -615,4 +633,38 @@ bool DIALOGProcess::SenderThread::registerMessageSenderImpl(
     }
     list.append(name);
     return true;
+}
+
+DIALOGNamedData::DIALOGNamedData(const QString &nameInit, QObject *parent)
+    : QObject(parent)
+{
+    name = nameInit;
+}
+
+QByteArray DIALOGNamedData::getData() const
+{
+    QMutexLocker locker(&mutex);
+    return data;
+}
+
+DIALOGErrorCode DIALOGNamedData::getError() const
+{
+    QMutexLocker locker(&mutex);
+    return error;
+}
+
+QString DIALOGNamedData::getName() const
+{
+    QMutexLocker locker(&mutex);
+    return name;
+}
+
+void DIALOGNamedData::controlServerConnectedSlot()
+{
+    emit controlServerConnectedSignal();
+}
+
+void DIALOGNamedData::controlServerUnavailableErrorSlot()
+{
+    emit controlServerUnavailableErrorSignal();
 }

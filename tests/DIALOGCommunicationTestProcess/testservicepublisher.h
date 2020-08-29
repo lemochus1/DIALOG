@@ -18,7 +18,14 @@ public:
 public slots:
     void updateData();
 
-signals:
+    virtual void dataUpdateRequestedSlot() override;
+    virtual void controlServerConnectedSlot() override;
+    virtual void controlServerUnavailableErrorSlot() override;
+    virtual void messageReceivedSlot(const QByteArray &message) override;
+    virtual void registrationFailedSlot() override;
+
+    void newSubscriber();
+    void lostSubscriber();
 
 private:
     QString processName;
@@ -26,7 +33,6 @@ private:
     int updateCounter;
     int repeat;
     int size;
-    QMutex mutex;
     QTimer* timer;
 
 };

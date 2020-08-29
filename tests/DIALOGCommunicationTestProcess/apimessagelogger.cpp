@@ -9,9 +9,13 @@ const QString COMMAND = "command";
 const QString PROCEDURE = "procedure";
 const QString PROCEDURE_CALL = "procedure-call";
 const QString PROCEDURE_DATA = "procedure-data";
+
 const QString SERVICE = "service";
 const QString SERVICE_DATA = "service-data";
 
+const QString ERROR = "error";
+const QString UNAVAILABLE = "unavailable";
+const QString CONTROL_SERVER_LOST = "control-server-lost";
 
 APIMessageLogger &APIMessageLogger::GetInstance()
 {
@@ -84,6 +88,21 @@ void APIMessageLogger::logProcedureCallReceived(const QString &name, const QStri
     printMessage(composeLogMessage(RECEIVED, PROCEDURE_CALL, name, message));
 }
 
+void APIMessageLogger::logServiceUnavailable(const QString &name)
+{
+    printMessage(composeLogMessage(ERROR, UNAVAILABLE, SERVICE, name));
+}
+
+void APIMessageLogger::logProcedureUnavailable(const QString &name)
+{
+    printMessage(composeLogMessage(ERROR, UNAVAILABLE, PROCEDURE, name));
+}
+
+void APIMessageLogger::logControlServerLost(const QString objectType, const QString &name)
+{
+    printMessage(composeLogMessage(ERROR, CONTROL_SERVER_LOST, objectType, name));
+}
+
 QString APIMessageLogger::getMessageLogString(const QByteArray &message)
 {
     QString asString = QString(message);
@@ -110,9 +129,7 @@ QString APIMessageLogger::generateRandomString(int size)
 
 APIMessageLogger::APIMessageLogger()
     : logFile("")
-{
-
-}
+{ }
 
 void APIMessageLogger::    printMessage(const QString &message)
 {
@@ -128,7 +145,11 @@ void APIMessageLogger::    printMessage(const QString &message)
 
 QString APIMessageLogger::composeLogMessage(const QString &action, const QString &type, const QString &name, const QString &message)
 {
-    return getDateTimeString() + " " + createElement("api", createElement(action, createElement(type, message, name)));
+    return getDateTimeString() + " " + createElement("api",
+                                                     createElement(action,
+                                                                   createElement(type,
+                                                                                 message,
+                                                                                 name)));
 }
 
 QString APIMessageLogger::getDateTimeString()
@@ -149,7 +170,9 @@ QString APIMessageLogger::createEndElement(const QString &type)
     return "</" + type + ">";
 }
 
-QString APIMessageLogger::createElement(const QString &type, const QString message, const QString &name)
+QString APIMessageLogger::createElement(const QString &type,
+                                        const QString message,
+                                        const QString &name)
 {
     return createStartElement(type, name) + message + createEndElement(type);
 }

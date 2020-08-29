@@ -21,9 +21,8 @@ public:
 public slots:
     void sendCommand();
 
-signals:
-
 private:
+    QByteArray generateMessage();
     QString commandName;
 
     QString processName;
@@ -40,7 +39,6 @@ private:
     int size;
 
     int sendCounter;
-    QMutex mutex;
     QTimer* timer;
 };
 

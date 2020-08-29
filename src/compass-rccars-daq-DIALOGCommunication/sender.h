@@ -20,6 +20,7 @@ class Sender : public QThread
 public:
     Sender(Server* serverInit);
     ~Sender();
+
     bool anyOpenSockets();
     void closeAllSockets();
     void closeSocket(Socket* socket);
@@ -34,21 +35,45 @@ public Q_SLOTS:
                          QByteArray* header,
                          QByteArray* message = nullptr);
     void sendHeartBeatSlot(QByteArray* header);
-    void sendServiceMessageSlot(QString serviceName, QByteArray* message);
-    void sendCommandMessageSlot(QString commandName, QByteArray* message);
-    void sendDirectCommandMessageSlot(QString commandName,
-                                      QByteArray* message,
-                                      QString processName);
-    void sendDirectCommandUrlMessageSlot(QString commandName,
-                                         QByteArray* message,
-                                         QString url,
-                                         int port);
 
-    void callProcedureMessageSlot(QString procedureName, QByteArray* message);
+    void sendServiceMessageSlot(QString serviceName, QByteArray* message);
+    void sendServiceDataRequestMessageSlot(QString serviceName);
+    void sendServicePublisherMessageSlot(QString serviceName, QByteArray* message);
+    void sendServiceSubscriberMessageSlot(QString serviceName, QByteArray* message);
+
+    void sendCommandMessageSlot(QString commandName, QByteArray* message);
+    void sendCommandNameMessageSlot(QString commandName,
+                                    QByteArray* message,
+                                    QString processName);
+    void sendCommandAddressMessageSlot(QString commandName,
+                                       QByteArray* message,
+                                       QString address,
+                                       int port);
+
+    void callProcedureMessageSlot(QString procedureName, QByteArray* message, int callerId);
+    void callProcedureNameMessageSlot(QString procedureName,
+                                      QByteArray* message,
+                                      QString processName,
+                                      int callerId);
+    void callProcedureAddressMessageSlot(QString procedureName,
+                                         QByteArray* message,
+                                         QString address,
+                                         int port,
+                                         int callerId);
     void sendProcedureReturnMessageSlot(QString procedureName,
                                         QByteArray* message,
-                                        QString url,
-                                        int port);
+                                        QString address,
+                                        int port,
+                                        int callerId);
+    void sendProcedureFailedMessageSlot(QString procedureName,
+                                        QByteArray* message,
+                                        QString address,
+                                        int port,
+                                        int callerId);
+    void sendProcedureInvalidParamsMessageSlot(QString procedureName,
+                                               QString address,
+                                               int port,
+                                               int callerId);
 
     void senderErrorSlot(QString error);
     void socketDisconnectedSlot();
@@ -61,6 +86,32 @@ Q_SIGNALS:
     void senderStartedSignal();
 
 private:
+    bool canBeSent(QByteArray* message);
+    void sendMessageImpl(Process* targetProcess,
+                         MessageContainer* messageContainer);
+    void sendMessageImpl(Process* targetProcess,
+                         QByteArray *header,
+                         QByteArray *message = nullptr,
+                         quint32 messageCounterInit = 1);
+    void sendToControlServer(QByteArray *header,
+                             QByteArray *message = nullptr,
+                             quint32 messageCounterInit = 1);
+    void sendToServiceSender(const QString serviceName,
+                             QByteArray* header,
+                             QByteArray *message = nullptr);
+    void sendToServiceReceivers(const QString serviceName,
+                                QByteArray* header,
+                                QByteArray *message = nullptr);
+    void sendProcedureMessageImpl(QString procedureName,
+                                  QString procedureMessageType,
+                                  QString address,
+                                  int port,
+                                  int callerId,
+                                  QByteArray* message = nullptr);
+
+    QString createHeaderKey(const QStringList &headerList);
+    QByteArray * createHeader(const QStringList &headerList);
+
     QThread* serverThread;
     QEventLoop* senderEventLoop;
     Server* server;

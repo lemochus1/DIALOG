@@ -9,10 +9,6 @@ from shared.evaluating import *
 #===================================================================================================
 
 # Test
-SENDER_COUNT           = 1
-HANDLER_COUNT          = 1
-PAUSE_BETWEEN_CONNECTS = 400
-
 MESSAGE_SIZE           = 0
 PAUSE_BETWEEN_MESSAGES = 500
 MESSAGE_COUNT          = 20
@@ -21,7 +17,7 @@ TARGETED_PROCESS_NAME = "targeted-handler"
 
 # Run
 CYCLE_COUNT    = getArgumentValue(CYCLE_COUNT_KEY, 1)
-CYCLE_DURATION = getArgumentValue(CYCLE_DURATION_KEY, 10000)
+CYCLE_DURATION = getArgumentValue(CYCLE_DURATION_KEY, 3000)
 
 #===================================================================================================
 # Tokens
@@ -43,11 +39,13 @@ class DirectCommandEvaluator(TestEvaluator):
         pass
 
     def setupProcessResults(self):
-        pass
+        self.control_server_result.addControlledMessage(NOT_REGISTERED)
+        self.control_server_result.addIgnoredMessage(NOT_REGISTERED)
 
     def evaluate(self):
         if self.noErrorOccured():
             self.checkAllUnexpectedMessages()
+            return bool(self.control_server_result.controlled_messages)
         return False
 
 #===================================================================================================

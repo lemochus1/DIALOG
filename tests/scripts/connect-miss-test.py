@@ -10,14 +10,14 @@ from shared.evaluating import *
 
 # Test
 MESSAGE_SIZE           = 0
-PAUSE_BETWEEN_MESSAGES = 500
+PAUSE_BETWEEN_MESSAGES = 1000
 MESSAGE_COUNT          = 20
 
 PROCESS_NAMES = [SERVICE_PROVIDER, SERVICE_SUBSCRIBER, COMMAND_SANDER, PROCEDURE_CALLER]
 
 # Run
 CYCLE_COUNT    = getArgumentValue(CYCLE_COUNT_KEY, 1)
-CYCLE_DURATION = getArgumentValue(CYCLE_DURATION_KEY, 4000)
+CYCLE_DURATION = getArgumentValue(CYCLE_DURATION_KEY, 5000)
 
 #===================================================================================================
 # Tokens

@@ -12,14 +12,28 @@ class TESTProcedureCallController : public QObject
     Q_OBJECT
 
 public:
-    TESTProcedureCallController(QString nameInit, QString targetProcessInit, int durationInit, int repeatInit);
+    TESTProcedureCallController(QString nameInit,
+                                QString targetProcessInit,
+                                int durationInit,
+                                int repeatInit);
 
     void start();
 
 public slots:
     void callProcedure();
 
+    void controlServerUnavailable();
+    void controlServerConnected();
+
+    void responseReceived(const QByteArray &message);
+    void callFailed(const QByteArray &message);
+    void procedureUnavailable();
+    void paramsInvalid();
+    void timeoutPassed();
+
 private:
+    void waitForData(QSharedPointer<DIALOGProcedureCaller> caller);
+
     QString name;
     QString processName;
     QString targetProcess;

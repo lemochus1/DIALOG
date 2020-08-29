@@ -32,6 +32,11 @@ public:
     void logProcedureDataReceived(const QString& name, const QString& message);
     void logProcedureCallReceived(const QString& name, const QString& message);
 
+    void logServiceUnavailable(const QString& name);
+    void logProcedureUnavailable(const QString& name);
+
+    void logControlServerLost(const QString objectType, const QString& name);
+
     QString getMessageLogString(const QByteArray& message);
     QString generateRandomString(int size);
 

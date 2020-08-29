@@ -22,9 +22,9 @@ SOURCES += \
     testcommandhandler.cpp \
     testcommandsender.cpp \
     testprocedurecallcontroller.cpp \
-    testprocedurehandler.cpp \
+    testprocedureprovider.cpp \
     testprocesscontroller.cpp \
-    testServicePublisher.cpp \
+    testservicepublisher.cpp \
     testservicesubscriber.cpp
 
 # Default rules for deployment.
@@ -58,7 +58,7 @@ HEADERS += \
     testcommandhandler.h \
     testcommandsender.h \
     testprocedurecallcontroller.h \
-    testprocedurehandler.h \
+    testprocedureprovider.h \
     testprocesscontroller.h \
-    testServicePublisher.h \
+    testservicepublisher.h \
     testservicesubscriber.h

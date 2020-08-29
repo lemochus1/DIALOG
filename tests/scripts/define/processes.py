@@ -9,4 +9,4 @@ SERVICE_SUBSCRIBER = "service-subscriber"
 SERVICE_PROVIDER   = "service-provider"
 
 PROCEDURE_PROVIDER = "procedure-provider"
-PROCEDURE_CALLER  = "procedure-caller"
+PROCEDURE_CALLER   = "procedure-caller"

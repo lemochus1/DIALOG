@@ -9,9 +9,9 @@
 #include "testcommandhandler.h"
 #include "testcommandsender.h"
 #include "testprocedurecallcontroller.h"
-#include "testprocedurehandler.h"
-#include "testServicePublisher.h"
+#include "testprocedureprovider.h"
 #include "testservicesubscriber.h"
+#include "testservicepublisher.h"
 #include "apimessagelogger.h"
 
 class TESTProcessController

@@ -9,13 +9,12 @@ class TESTCommandHandler : public DIALOGCommandHandler
 {
     Q_OBJECT
 public:
-    explicit TESTCommandHandler(QString name);
+    explicit TESTCommandHandler(const QString& name);
 
-public slots:
-    virtual void commandReceivedSlot(QByteArray message) override;
-
-signals:
-
+private slots:
+    virtual void commandReceivedSlot(const QByteArray& message) override;
+    virtual void controlServerConnectedSlot() override;
+    virtual void controlServerUnavailableErrorSlot() override;
 };
 
 #endif // TESTCOMMANDHANDLER_H

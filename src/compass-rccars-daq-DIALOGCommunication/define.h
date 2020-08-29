@@ -54,6 +54,14 @@ enum ProcessType { ControlServer = 1, Custom = 2, Monitoring = 3 };
 #define CONNECTION_REFUSED_ERROR "CONNECTION_REFUSED_ERROR"
 #define DEFAULT_ERROR "DEFAULT_ERROR"
 
+#define SERVICE_UNAVAILABLE "SERVICE_UNAVAILABLE"
+#define SERVICE_ACTIVATED "SERVICE_ACTIVATED"
+#define PUBLISHER_MESSAGE "PUBLISHER_MESSAGE"
+#define SUBSCRIBER_MESSAGE "SUBSCRIBER_MESSAGE"
+#define UPDATE_REQUEST "UPDATE_REQUEST"
+#define PROCEDURE_FAILED "PROCEDURE_FAILED"
+#define PROCEDURE_INVALID "PROCEDURE_INVALID"
+#define PROCEDURE_UNKNOWN "PROCEDURE_UNKNOWN"
 /* COMMON FUNCTIONS */
 class DIALOGCommon
 {
@@ -118,7 +126,7 @@ enum DIALOGMessageHandlerType {
     ServicePublisher = 1,
     ServiceSubscriber = 2,
     ProcedureProvider = 3,
-    ProcedureCaller = 4
+    ProcedureCaller = 4,
 };
 
 const QMap<DIALOGMessageHandlerType, QString> DIALOGMessageStrings {
@@ -131,6 +139,12 @@ const QMap<DIALOGMessageHandlerType, QString> DIALOGMessageStrings {
 enum DIALOGErrorCode {
     NoError = 0,
     LostControlServer = 1,
+    InvalidParams = 2,
+    CallFailed = 3,
+    Unavailable = 4,
+    Timeout = 5,
+    RegistrationFailed = 6,
+    LostPartner = 7,
 };
 
 

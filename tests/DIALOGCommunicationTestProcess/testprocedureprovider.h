@@ -13,8 +13,10 @@ class TESTProcedureProvider : public DIALOGProcedureProvider
 public:
     TESTProcedureProvider(QString name, QString processNameInit, int callDurationInit);
 
-public slots:
-    void callRequestedSlot(QByteArray params, QString urlInit, int portInit) override;
+private slots:
+    virtual void callRequestedSlot(const QByteArray& params, int callId) override;
+    virtual void controlServerConnectedSlot() override;
+    virtual void controlServerUnavailableErrorSlot() override;
 
 private:
     int callDuration;

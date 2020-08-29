@@ -8,13 +8,17 @@
 class TESTServiceSubscriber : public DIALOGServiceSubscriber
 {
     Q_OBJECT
+
 public:
     explicit TESTServiceSubscriber(QString name);
 
-public slots:
-    virtual void dataUpdatedSlot(QByteArray dataInit) override;
-
-signals:
+private slots:
+    virtual void dataUpdatedSlot(const QByteArray &data) override;
+    virtual void controlServerConnectedSlot() override;
+    virtual void controlServerUnavailableErrorSlot() override;
+    virtual void messageReceivedSlot(const QByteArray& message) override;
+    virtual void serviceUnavailableErrorSlot() override;
+    virtual void serviceActivatedSlot() override;
 
 };
 

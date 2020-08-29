@@ -1,29 +1,28 @@
 #ifndef DIALOGAPI_H
 #define DIALOGAPI_H
 
-#include <QObject>
-#include <QHostInfo>
-#include <QMutexLocker>
-
-#include "server.h"
-#include "define.h"
-#include "processaddress.h"
-
-class DIALOGServicePublisher;
-class DIALOGServiceSubscriber;
-class DIALOGNamedData;
-class DIALOGCommandHandler;
-class DIALOGProcedureCaller;
-class DIALOGProcedureProvider;
+#include "server.h" // Original interface
 
 //==================================================================================================
-// DIALOG Process
+// Public API classes
+//==================================================================================================
+
+class DIALOGProcess;
+class DIALOGNamedData;
+class DIALOGCommandHandler;
+class DIALOGProcedureProvider;
+class DIALOGProcedureCaller;
+class DIALOGServicePublisher;
+class DIALOGServiceSubscriber;
+
+//==================================================================================================
+// Process
 //==================================================================================================
 
 /// Singleton representing key point for integration of the DIALOG library into Custom processes.
 ///
-/// It should be thread-safe and usable from any thread of the application. This requirement resuled
-/// in the class not being based on QObject, as it would complicate the safety.
+/// It should be safe to used it from any thread of the application. This requirement resuled
+/// in the class not being based on QObject, as it would complicate things.
 /// Most of the time it only invokes methods of specialized instances running in their own threads.
 /// In that way this class hides the DIALOG threads model from the application.
 /// The getter getServer can be used to access the original DIALOG API, but it is not recommended.
@@ -44,8 +43,12 @@ public:
     /// Returns the singleton instance.
     static DIALOGProcess &GetInstance();
 
-    /// Starts all DIALOG eventloops, triggers registrations and allows passing on messages.
+    /// Starts all DIALOG eventloops, connects to Control Server, triggers registrations and allows
+    /// passing on messages.
     void start(QThread::Priority priority = QThread::NormalPriority);
+
+    /// Returns whether it has been started.
+    bool started() const;
 
     /// Kills the application.
     void stop();
@@ -57,10 +60,13 @@ public:
     /// Safe only before DIALOGProcess::start is called.
     void setControlServerAddress(const QString& address, quint16 port);
 
+    /// Returns whether it is currently connected to Control Server.
+    bool connectedToControlServer() const;
+
     /// Sets the Process name available to Control Server, otherwise the word "Unnamed" is used.
     ///
     /// Should be called before DIALOGProcess:start()
-    bool setName(const QString& nameInit);
+    bool setName(const QString& name);
 
     /// Returns Process name
     QString getName() const;
@@ -105,6 +111,7 @@ public:
     /// Validity check needed as it returns null reference in case of registration failure.
     /// Keeps only weak referece to the created object.
     QSharedPointer<DIALOGServicePublisher> tryRegisterService(const QString& name);
+
     /// Sends request message to Control server and setups given object as a receiver of
     /// regularly updated data.
     ///
@@ -113,53 +120,102 @@ public:
 
     /// Creates, registers and returns default version of Service subscriber for given name.
     ///
+    /// Returns instance that is expected to obtain the call return value.
     /// Validity check needed as it returns null reference in case of registration failure.
     /// Keeps only weak referece to the created object.
     QSharedPointer<DIALOGServiceSubscriber> tryRequestService(const QString& name);
 
+    /// Calls remote procedure specified by given instance.
+    ///
+    /// Unless connected to Control Server, it waits for a while before cancelling the attempt.
+    /// Returns whether message could be sent.
+    bool tryCallProcedure(QWeakPointer<DIALOGProcedureCaller> caller);
+
     /// Calls remote procedure of the given name with forwarded params.
     ///
+    /// Unless connected to Control Server, it waits for a while before cancelling the attempt.
+    /// Returns instance that is expected to obtain the call return value.
     /// Validity check needed as it returns null reference in case of missing connection
     /// to Control Server.
     /// Keeps only weak referece to the created object.
     QSharedPointer<DIALOGProcedureCaller> tryCallProcedure(const QString& name,
                                                            const QByteArray& params);
-    //DIALOGProcedureCaller* callProcedure(QString name, QString process);
-    //DIALOGProcedureCaller* callProcedure(QString name, QString url, int port);
+
+    /// Calls remote procedure specified by given instance provided by named process.
+    ///
+    /// Unless connected to Control Server, it waits for a while before cancelling the attempt.
+    /// Returns whether message could be sent.
+    bool tryCallProcedure(QWeakPointer<DIALOGProcedureCaller> caller, const QString& processName);
+
+    /// Calls remote procedure of the given name with forwarded params on named process.
+    ///
+    /// Unless connected to Control Server, it waits for a while before cancelling the attempt.
+    /// Returns instance that is expected to obtain the call return value.
+    /// Validity check needed as it returns null reference in case of missing connection
+    /// to Control Server.
+    /// Keeps only weak referece to the created object.
+    QSharedPointer<DIALOGProcedureCaller> tryCallProcedure(const QString& name,
+                                                           const QByteArray& params,
+                                                           const QString& processName);
+
+    /// Calls remote procedure specified by given instance hosted on given address.
+    ///
+    /// Returns allways true as it cannot be validated synchronically.
+    bool tryCallProcedure(QWeakPointer<DIALOGProcedureCaller> caller,
+                          const QString& address,
+                                quint16 port);
+
+    /// Calls remote procedure of the given name with forwarded params hosted on given address.
+    ///
+    /// Returns valid instance that is expected to obtain the call return value.
+    /// Keeps only weak referece to the created object.
+    QSharedPointer<DIALOGProcedureCaller> tryCallProcedure(const QString& name,
+                                                           const QByteArray& params,
+                                                           const QString& address,
+                                                                 quint16 port);
 
     /// Sends Command of given name with forwarded message to Control server for distribution.
     ///
+    /// Unless connected to Control Server, it waits for a while before cancelling the attempt.
     /// Successful delivery is not controlled. Use a different format for reliable communication.
-    /// Returns whether connected to Control server which is needed for sending the message.
+    /// Returns whether message could be sent.
     bool trySendCommand(const QString& name, const QByteArray& message);
 
     /// Sends Direct Command of given name with forwarded message to Control server for
     /// distribution among processes of given processName.
     ///
+    /// Unless connected to Control Server, it waits for a while before cancelling the attempt.
     /// Successful delivery is not controlled. Use a different format for reliable communication.
-    /// Returns whether connected to Control server which is needed for sending the message.
-    bool trySendDirectCommand(const QString& name,
-                              const QByteArray& message,
-                              const QString& processName);
+    /// Returns whether message could be sent.
+    bool trySendCommand(const QString& name, const QByteArray& message, const QString& processName);
 
-    /// Sends Direct Command of given name with forwarded message to specified adress.
+    /// Sends Direct Command of given name with forwarded message to specified address.
     ///
     /// Successful delivery is not controlled. Use a different format for reliable communication.
     /// Returns allways true as it cannot be validated synchronically.
-    bool trySendDirectCommand(const QString& name,
-                              const QByteArray& message,
-                              const QString& address,
+    bool trySendCommand(const QString& name,
+                        const QByteArray& message,
+                        const QString& address,
                               quint16 port);
 
 private:
     DIALOGProcess();
     ~DIALOGProcess();
 
-    /// Trick to avoid duplicities.
+    // Trick to avoid duplicities.
     template<typename T>
-    bool tryRegisterTypeImpl(QWeakPointer<T> handler, DIALOGMessageHandlerType type);
+    bool tryRegisterTypeImpl(QWeakPointer<T> handler,
+                             DIALOGMessageHandlerType type,
+                             const char* method);
     template<typename T>
-    QSharedPointer<T> tryRegisterTypeImpl(const QString& name, DIALOGMessageHandlerType type);
+    QSharedPointer<T> tryRegisterTypeImpl(const QString& name,
+                                          DIALOGMessageHandlerType type,
+                                          const char* method);
+
+    /// Returns if started and connected. If not, it waits a while for a repair before return.
+    ///
+    /// Expected to be called in each method that triggers contacting Control Server.
+    bool canContactControlServer();
 
 public:
     DIALOGProcess(DIALOGProcess const&) = delete;
@@ -173,15 +229,18 @@ private:
     QPointer<ReceiverThread> receiver;
 
     ProcessAddress controlAddress;
+
+    QMutex mutex;
 };
 
 //==================================================================================================
-// Receiver and Sender threads
+// Nested Receiver and Sender threads
 //==================================================================================================
 
 /// Following two classes represents adapter to the old interface of DIALOG library.
 ///
-/// They should be eliminated eventually but now they are needed becouse of backward compatibility.
+/// They should be eliminated eventually as this approach requires many unnecessary connections of
+/// dummy slots to signals but now they are needed becouse of backwards compatibility.
 /// Nested as they are not supposed to be used directly by the user.
 /// Their rocedures are not documented as they are not a part of the API.
 class DIALOGProcess::ReceiverThread: public VirtualThread
@@ -190,83 +249,167 @@ class DIALOGProcess::ReceiverThread: public VirtualThread
 
 public:
     ~ReceiverThread();
+
     void run() override;
 
-    /// Overloaded for easier use with templates. Not really public anyway.
-    bool tryRegisterMessageHandler(QWeakPointer<DIALOGCommandHandler> handler);
-    bool tryRegisterMessageHandler(QWeakPointer<DIALOGServiceSubscriber> handler);
-    bool tryRegisterMessageHandler(QWeakPointer<DIALOGServicePublisher> handler);
-    bool tryRegisterMessageHandler(QWeakPointer<DIALOGProcedureCaller> handler);
-    bool tryRegisterMessageHandler(QWeakPointer<DIALOGProcedureProvider> handler);
+    // Overloaded for easier use with templates. Not really public anyway.
+    bool tryRegisterMessageHandler(QWeakPointer<DIALOGCommandHandler> commandHandler);
+    bool tryRegisterMessageHandler(QWeakPointer<DIALOGServiceSubscriber> serviceSubscriber);
+    bool tryRegisterMessageHandler(QWeakPointer<DIALOGServicePublisher> servicePublisher);
+    bool tryRegisterMessageHandler(QWeakPointer<DIALOGProcedureProvider> procedureProvider);
+
+    /// Registeres caller and returns its unique ID needed for addressing response.
+    ///
+    /// Returns -1 if registration failed.
+    /// Requres different approach as it is the only non unique single-shot object.
+    int tryRegisterProcedureCaller(QWeakPointer<DIALOGProcedureCaller> procedureCaller);
+
+    void setSenderThread(QPointer<SenderThread> sender);
 
 public slots:
-    void messageReceivedSlot(QString senderName,
+    void messageReceivedSlot(QString senderAddress,
                              quint16 senderPort,
                              QByteArray *header,
                              QByteArray *message) override;
+    void serverErrorSlot(QString error) override;
+
+    void controlServerConnectedSlot();
+    void controlServerUnavailableSlot();
+
+    void lostServiceSubscriberSlot(const QString& name);
+    void serviceUnavailableSlot(const QString& name);
+    void procedureUnavailableSlot(const QString& name, int callerId);
+    void newServiceSubscriberSlot(const QString& name);
+    void serviceActivatedSlot(const QString& name);
+    void serviceRegistrationFailedSlot(const QString& name);
+    /// Triggers automatic unregistration
+    ///
+    /// Called whenever registered handler is deleted.
+    void objectDeletedSlot();
 
 private:
-    /// Trick to avoid duplicities.
+    // Trick to avoid duplicities.
     template<typename T>
     bool registerMessageHandlerImpl(QWeakPointer<T> handler,
                                     QMap<QString, QWeakPointer<T>>& map,
                                     DIALOGMessageHandlerType type);
     template<typename T>
-    bool invokeMethod(QWeakPointer<T> handler, const char *method, QByteArray * message);
+    void removeInvalidPointers(QMap<QString, QWeakPointer<T>>& map,
+                               const char* unregisterMethod);
+
+    void removeInvalidProcedureCallers();
+    bool trySetResponseAddress(const QString& senderAddress, int senderPort, int callerId);
+
+    void commandMassageReceived(const QStringList& headerList, QByteArray* message);
+    void serviceMessageReceived(const QStringList& headerList, QByteArray* message);
+    void procedureMessageReceived(const QStringList& headerList,
+                                  QByteArray* message,
+                                  QString senderAddress,
+                                  quint16 senderPort);
 
     QMap<QString, QWeakPointer<DIALOGCommandHandler>> commands;
     QMap<QString, QWeakPointer<DIALOGServiceSubscriber>> serviceSubscribers;
-    QMap<QString, QWeakPointer<DIALOGProcedureCaller>> procedureCallers;
+    QMap<QString, QWeakPointer<DIALOGServicePublisher>> servicePublishers;
     QMap<QString, QWeakPointer<DIALOGProcedureProvider>> procedureProviders;
+    // Classifed by name and ID.
+    QMap<QString, QMap<int, QWeakPointer<DIALOGProcedureCaller>>> procedureCallers;
+
+    QList<QWeakPointer<DIALOGNamedData>> allHandlers;
+
+    /// Needed for fast responses and error messages
+    QPointer<SenderThread> senderThread;
+    // Identifies messages so answers can be addressed.
+    int messageId = 0;
+    // Identifies caller objects so answers can be addressed.
+    int callerId = 0;
+    // Cache info about connection so it can determine a change.
+    bool controlServerAvailable = false;
 };
 
 class DIALOGProcess::SenderThread: public VirtualThread
 {
     Q_OBJECT
 
+    struct ResponseAddress
+    {
+      QString address;
+      quint16 port;
+      int objectId;
+
+      ResponseAddress() = default;
+      ResponseAddress(const QString& address, quint16 port, int objectId)
+          : address(address),
+            port(port),
+            objectId(objectId)
+      {}
+    };
+
 public:
     ~SenderThread();
+
     void run() override;
 
-    /// Overloaded for easier use with templates. Not really public anyway.
-    bool tryRegisterMessageSender(QWeakPointer<DIALOGCommandHandler> sender);
-    bool tryRegisterMessageSender(QWeakPointer<DIALOGServiceSubscriber> sender);
-    bool tryRegisterMessageSender(QWeakPointer<DIALOGServicePublisher> sender);
-    bool tryRegisterMessageSender(QWeakPointer<DIALOGProcedureCaller> sender);
-    bool tryRegisterMessageSender(QWeakPointer<DIALOGProcedureProvider> sender);
+    // Overloaded for easier use with templates. Not really public anyway.
+    bool tryRegisterMessageSender(QWeakPointer<DIALOGCommandHandler> commandHandler);
+    bool tryRegisterMessageSender(QWeakPointer<DIALOGServiceSubscriber> serviceSubscriber);
+    bool tryRegisterMessageSender(QWeakPointer<DIALOGServicePublisher> servicePublisher);
+    bool tryRegisterMessageSender(QWeakPointer<DIALOGProcedureProvider> procedureProvider);
 
-public slots:
-    /// These slots just trigger signals for old API, it should be eliminated later.
-    void sendCommandSlot(QString name, QByteArray* message);
-    /// Not overloaded because of problems with connecting to homonymous signals and consistency.
-    void sendDirectCommandNameSlot(QString name, QByteArray* message, QString processName);
-    void sendDirectCommandAddressSlot(QString name,
-                                      QByteArray* message,
-                                      QString address,
-                                      quint16 port);
-    void sendServiceSlot(QString name, QByteArray message);
-    void callProcedureSlot(QString name, QByteArray message);
-    void sendProcedureReturnValueSlot(QString name, QByteArray data, QString address, quint16 port);
+    void setProcedureResponseAddress(int callId, int callerId, const QString &address, quint16 port);
+
+public slots: // Just trigger signals for old API, it should be eliminated later.
+    // Not overloaded because of problems with connecting to homonymous signals and consistency.
+    void sendCommandSlot(const QString &name, const QByteArray &message);
+    void sendCommandNameSlot(const QString& name,
+                             const QByteArray &message,
+                             const QString& processName);
+    void sendCommandAddressSlot(const QString& name,
+                                const QByteArray& message,
+                                const QString& address,
+                                quint16 port);
+    void callProcedureSlot(const QString& name, const QByteArray& message, int callerId);
+    void callProcedureNameSlot(const QString& name,
+                               const QByteArray &message,
+                               const QString& processName,
+                               int callerId);
+    void callProcedureAddressSlot(const QString& name,
+                                  const QByteArray& message,
+                                  const QString& address,
+                                  quint16 port,
+                                  int callerId);
+
+    void sendProcedureReturnValueSlot(const QByteArray& data, int callId);
+    void sendProcedureFailedSlot(const QByteArray& message, int callId);
+    void sendParamsInvalidErrorSlot(int callId);
+
+    void sendServiceDataSlot(const QByteArray &data);
+    void sendServicePublisherMessageSlot(const QByteArray &message);
+    void requestServiceUpdateSlot();
+    void sendServiceSubscriberMessageSlot(const QByteArray &message);
 
 private:
-    /// Trick to avoid duplicities.
+    // Trick to avoid duplicities.
     template<typename T>
     bool registerMessageSenderImpl(QWeakPointer<T> sender,
                                    QStringList& list,
                                    DIALOGMessageHandlerType type);
+    template<typename T>
+    QString getSenderName(QObject* obj);
 
-    /// Names to be registered ones the server is started.
+    // Names to be registered ones the server is started.
     QStringList servicesToRegister;
     QStringList servicesToRequest;
     QStringList commandsToRegister;
     QStringList proceduresToRegister;
+    // Maps messageId to response address.
+    QMap<int, ResponseAddress> responseAddresses;
 };
 
 //==================================================================================================
-// Help classes
+// Base data class
 //==================================================================================================
 
-/// Class containing functionality common to all supported communication formats.
+/// Contains functionality common to all supported communication formats.
 ///
 /// There should be no need to use it directly. Might for polymorphism.
 class DIALOGNamedData: public QObject
@@ -286,7 +429,7 @@ public:
     /// Returns whether an error occurred.
     bool errorOccurred() const;
 
-private slots:// Called by DIALOG internals.
+private slots:// Receiving slots called by DIALOG internals.
     /// Emits controlServerConnectedSignal.
     ///
     /// Called whenever its process gets connected to Control Server.
@@ -305,11 +448,18 @@ signals:
     void controlServerUnavailableErrorSignal();
 
 protected:
-    explicit DIALOGNamedData(const QString& nameInit, QObject* parent=nullptr);
+    explicit DIALOGNamedData(const QString& name, QObject* parent=nullptr);
     virtual ~DIALOGNamedData() = default;
+
+    /// Safely sets the data.
+    void setData(const QByteArray& data);
+
+    /// Safely sets error code.
+    void setError(DIALOGErrorCode error);
 
     mutable QMutex mutex;
 
+private:
     QByteArray data;
     QString name;
     DIALOGErrorCode error;
@@ -323,16 +473,16 @@ protected:
 ///
 /// The only completely passive handler. E.g. it does not send the receiving comfirmation.
 /// Can be both used directly and subclassed.
-class DIALOGCommandHandler : public DIALOGNamedData
+class DIALOGCommandHandler: public DIALOGNamedData
 {
     Q_OBJECT
 
 public:
-    explicit DIALOGCommandHandler(const QString& nameInit, QObject* parent=nullptr);
+    explicit DIALOGCommandHandler(const QString& name, QObject* parent=nullptr);
     virtual ~DIALOGCommandHandler() = default;
 
-private slots:// Called by DIALOG internals.
-    /// Emits commandReceivedSignal
+private slots:// Receiving slots called by DIALOG internals.
+    /// Sets data and emits commandReceivedSignal
     ///
     /// Called whenewer this Command is received.
     virtual void commandReceivedSlot(const QByteArray& message);
@@ -358,40 +508,43 @@ class DIALOGProcedureProvider: public DIALOGNamedData
     Q_OBJECT
 
 public:
-    explicit DIALOGProcedureProvider(const QString &nameInit, QObject* parent=nullptr);
+    explicit DIALOGProcedureProvider(const QString &name, QObject* parent=nullptr);
     virtual ~DIALOGProcedureProvider() = default;
 
-public slots: // Callable in the application.
+public slots: // Sending slots callable in the application.
     /// Saves data and emits callFinishedSignal
-    void callFinishedSlot(const QByteArray& response);
+    void callFinishedSlot(const QByteArray& response, int callId);
 
     /// Sets error code and emits callFailedErrorSignal
-    void callFailedErrorSlot(const QByteArray& message);
+    void callFailedErrorSlot(const QByteArray& message, int callId);
 
     /// Sets error code and emits paramsInvalidErrorSignal
-    void paramsInvalidErrorSlot();
+    void paramsInvalidErrorSlot(int callId);
 
-private slots: // Called by DIALOG internals.
+private slots: // Receiving slots called by DIALOG internals.
     /// Emits callRequestedSignal
     ///
     /// Called whenever this procedure call is requested.
-    virtual void callRequestedSlot(const QByteArray& params);
+    virtual void callRequestedSlot(const QByteArray& params, int callId);
 
 signals:
     /// Indicates that this procedure has been called.
-    void callRequestedSignal(const QByteArray& params);
+    void callRequestedSignal(const QByteArray& params, int callId);
+
     /// Triggers sending response to caller process.
     ///
     /// Mainly for internal purposes.
-    void callFinishedSignal(const QByteArray& response);
+    void callFinishedSignal(const QByteArray& response, int callId);
+
     /// Triggers sending error message to caller process.
     ///
     /// Mainly for internal purposes.
-    void callFailedErrorSignal(const QByteArray& message);
+    void callFailedErrorSignal(const QByteArray& message, int callId);
+
     /// Triggers sending error message to caller process.
     ///
     /// Mainly for internal purposes.
-    void paramsInvalidErrorSignal();
+    void paramsInvalidErrorSignal(int callId);
 };
 
 /// Represents RPC caller object that is expected to obtain return value of called remote precedure.
@@ -403,9 +556,9 @@ class DIALOGProcedureCaller: public DIALOGNamedData
     Q_OBJECT
 
 public:
-    explicit DIALOGProcedureCaller(const QString& nameInit,
-                                   const QByteArray& paramsInit,
-                                   QObject* parent=nullptr);
+    explicit DIALOGProcedureCaller(const QString& name,
+                                   const QByteArray& params,
+                                         QObject* parent=nullptr);
     virtual ~DIALOGProcedureCaller() = default;
 
     /// Waits for responseReceivedSignal or for given timeout to pass.
@@ -419,20 +572,10 @@ public:
     /// Returns params that were used while calling the remote function.
     QByteArray getParams() const;
 
-    /// Sets timeout after which emmits timeoutPassedErrorSlot unless response is received sooner.
-    void setTimeout(int sTimeout);
+    /// Sets timeout after which timeoutPassedErrorSignal is emmited unless response was received.
+    void waitForTimeout(int sTimeout);
 
-public slots: // Callable in the application.
-    /// Emits tryAnotherCallSignal
-    void tryAnotherCallSlot();
-
-    /// Emits tryAnotherCallNameSignal
-    void tryAnotherCallNameSlot(const QString& providerName);
-
-    /// Emits tryANnotherCallAddressSignal
-    void tryAnotherCallAddressSlot(const QString& providerAddress, quint16 providerPort);
-
-private slots: // Called by DIALOG internals.
+private slots: // Receiving slots called by DIALOG internals.
     /// Saves data and emits responseReceivedSignal.
     ///
     /// Called if excpected response is received.
@@ -443,10 +586,10 @@ private slots: // Called by DIALOG internals.
     /// Called if error message is received.
     virtual void callFailedErrorSlot(const QByteArray& message);
 
-    /// Sets error code and emits procedureUnevailableErrorSignal.
+    /// Sets error code and emits procedureUnavailableErrorSignal.
     ///
     /// Called if requested procedure is not registered.
-    virtual void procedureUnevailableErrorSlot();
+    virtual void procedureUnavailableErrorSlot();
 
     /// Sets error code and emits paramsInvalidErrorSignal.
     ///
@@ -466,7 +609,7 @@ signals:
     void callFailedErrorSignal(const QByteArray& message);
 
     /// Indicates that wanted procedure is not registered on targeted process or Control Server.
-    void procedureUnevailableErrorSignal();
+    void procedureUnavailableErrorSignal();
 
     /// Indicates that targeted procedure cannot be called with given params.
     void paramsInvalidErrorSignal();
@@ -474,22 +617,9 @@ signals:
     /// Indicates that set timeout passed and no responce has been received.
     void timeoutPassedErrorSignal();
 
-    /// Triggeres another call of the remote procedure.
-    ///
-    /// Mainly for internal purposes.
-    void tryAnotherCallSignal();
-
-    /// Triggers another call of the remote procedure provided by named process.
-    ///
-    /// Mainly for internal purposes.
-    void tryAnotherCallNameSignal(const QString& providerName);
-
-    /// Triggers anoother call of the remote procedure provided on given address.
-    ///
-    /// Mainly for internal purposes.
-    void tryANnotherCallAddressSignal(const QString& providerAddress, quint16 providerPort);
-
 private:
+    void setHasResponse(bool response);
+
     bool hasResponse  = false;
 
     QByteArray params;
@@ -512,7 +642,7 @@ class DIALOGServicePublisher: public DIALOGNamedData
     Q_OBJECT
     
 public:
-    explicit DIALOGServicePublisher(const QString& nameInit, QObject* parent=nullptr);
+    explicit DIALOGServicePublisher(const QString& name, QObject* parent=nullptr);
     virtual ~DIALOGServicePublisher() = default;
 
     /// Returns whether it has at least one subscriber.
@@ -521,30 +651,35 @@ public:
     /// Returns number of active subscribers.
     int getSubscriberCount() const;
 
-public slots:// Callable in the application.
+public slots:// Sending slots callable in the application.
     /// Sets data and emits dataUpdatedSignal that causes sending updated data to all subscribers.
-    void updateDataSlot(const QByteArray& dataInit);
+    void updateDataSlot(const QByteArray& data);
 
     /// Emits sendMessageSignal that causes sending given message to all subscribers.
     ///
-    /// Allows different handling from data update by subscribers.
+    /// Allows different handling from data update in subscribers.
     void sendMessageToSubscribersSlot(const QByteArray& message);
 
-private slots:// Called by DIALOG internals.
+private slots:// Receiving slots called by DIALOG internals.
     /// Emits signal dataUpdateRequestedSignal.
     ///
     /// Called whenever a subscriber requests data update.
     virtual void dataUpdateRequestedSlot();
 
+    /// Emits messageReceivedSignal
+    ///
+    /// Called whenever subscriber sends a message.
+    virtual void messageReceivedSlot(const QByteArray &message);
+
     /// Updates counter and emits subscriberConnectedSignal.
     ///
     /// Called whenever new subscriber is connected.
-    virtual void subscriberConnectedSlot();
+    void subscriberConnectedSlot();
 
     /// Updates counter and error code and emits subscriberLostSignal.
     ///
     /// Called whenever a subscriber is lost.
-    virtual void subscriberLostSlot();
+    void subscriberLostSlot();
 
     /// Sets error code and emits registrationFailedSignal
     ///
@@ -555,12 +690,15 @@ signals:
     /// Emmited after data update to trigger sending messages to subscribers.
     ///
     /// Mainly for internal purposes.
-    void dataUpdatedSignal(const QString& name, const QByteArray& data);
+    void dataUpdatedSignal(const QByteArray& data);
+
+    ///Indicates that a subscriber sent a message
+    void messageReceivedSignal(const QByteArray& message);
 
     /// Emmited after data update to trigger messages to subscribers.
     ///
     /// Mainly for internal purposes.
-    void sendMessageSignal(const QString& name, const QByteArray& message);
+    void sendMessageToSubscribersSignal(const QByteArray& message);
 
     /// Indicates subscribers need for data update.
     void dataUpdateRequestedSignal();
@@ -586,21 +724,21 @@ class DIALOGServiceSubscriber: public DIALOGNamedData
     Q_OBJECT
     
 public:
-    explicit DIALOGServiceSubscriber(const QString& nameInit, QObject* parent=nullptr);
+    explicit DIALOGServiceSubscriber(const QString& name, QObject* parent=nullptr);
     virtual ~DIALOGServiceSubscriber() = default;
 
-public slots:// Callable in the application.
+public slots:// Sending slots callable in the application.
     /// Emits sendMessageSignal.
     void sendMessageToProviderSlot(const QByteArray& message);
 
     /// Emits requestDataUpdateSignal.
     void requestDataUpdateSlot();
 
-private slots:// Called by DIALOG internals.
+private slots:// Receiving slots called by DIALOG internals.
     /// Saves the data and emits dataUpdatedSignal.
     ///
     /// Called whenever provider updates the data.
-    virtual void dataUpdatedSlot(const QByteArray& dataInit);
+    virtual void dataUpdatedSlot(const QByteArray& data);
 
     /// Emits messageReceivedSignal.
     ///
@@ -610,11 +748,11 @@ private slots:// Called by DIALOG internals.
     /// Sets error code and emits serviceUnavailableErrorSignal.
     ///
     /// Called whenever provider gets lost or after startup if the service is not registered.
-    virtual void serviceUnavailableSlot();
+    virtual void serviceUnavailableErrorSlot();
 
     /// Emits serviceActivatedSignal.
     ///
-    /// Called whenever service is put into operation.
+    /// Called whenever connection with publisher is established.
     virtual void serviceActivatedSlot();
 
 signals:
@@ -626,7 +764,7 @@ signals:
     /// Triggers sending message to the provider.
     ///
     /// Mainly for internal purposes.
-    void sendMessageSignal(const QByteArray& message);
+    void sendMessageToProviderSignal(const QByteArray& message);
 
     /// Indicates that the provider updated its data.
     void dataUpdatedSignal(const QByteArray& data);
@@ -634,11 +772,11 @@ signals:
     /// Indicates that the provider sent a message.
     void messageReceivedSignal(const QByteArray& message);
 
-    /// Indicates new connection to the Service provider.
-    void serviceActivatedSignal();
-
     /// Indicates loss of connection to the Service provider or its non-existence during startup.
     void serviceUnavailableErrorSignal();
+
+    /// Indicates new connection to the Service provider.
+    void serviceActivatedSignal();
 };
 
 #endif // DIALOGAPI_H

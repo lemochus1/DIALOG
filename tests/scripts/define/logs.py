@@ -20,8 +20,11 @@ NO_HEART_BEAT                   = "crashed (No HeartBeats have been received)."
 CONNECT_REFUSED                 = "The connection was refused by the"
 CONNECT_REFUSED_DEFAULT_HANDLER = "Server error received: CONNECTION_ERROR|CONNECTION_REFUSED_ERROR"
 CONNECT_FAILED                  = "Connection to control server failed."
-
-ERROR_MESSAGE_PARTS = [WARNING, CRITICAL, FATAL, NO_HEART_BEAT, CONNECT_REFUSED, CONNECT_FAILED]
+NOT_REGISTERED                  = "is not registered on CommunicationControlSever."
+NO_SENDER                       = "has no sender"
+LOST_SENDER                     = "Lost sender of service Service"
+ERROR_MESSAGE_PARTS = [WARNING, CRITICAL, FATAL, NO_HEART_BEAT,
+                       CONNECT_REFUSED, CONNECT_FAILED, NOT_REGISTERED, NO_SENDER]
 
 # Standard messages
 START_MESSAGE_START = "The server is running on IP:"

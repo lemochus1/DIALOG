@@ -42,16 +42,20 @@ class ServiceCrashedEvaluator(TestEvaluator):
         pass
 
     def setupProcessResults(self):
-        for process_result_list in self.test_process_results.values():
-            for process_result in process_result_list:
-                process_result.addControlledMessage(CONNECT_REFUSED)
-                process_result.addIgnoredMessage(CONNECT_REFUSED)
+        for process_result in self.test_process_results[SERVICE_SUBSCRIBER]:
+            process_result.addControlledMessage(LOST_SENDER)
+            process_result.addIgnoredMessage(LOST_SENDER)
         self.control_server_result.addIgnoredMessage(INFO_ABOUT_SERVICE_MESSAGE)
+        self.control_server_result.addIgnoredMessage(NO_HEART_BEAT)
+
     def evaluate(self):
-        if self.noErrorOccured():
-            self.checkAllUnexpectedMessages()
-            return True
-        return False
+        self.checkAllUnexpectedMessages()
+        for process_result in self.test_process_results[SERVICE_SUBSCRIBER]:
+            if not UNAVAILABLE_TAG in process_result.api_error_messages:
+                self.logger.logAndPrint("Missing unavailable error message on {}."
+                                        .format(process_result.process_name))
+                return False
+        return True
 
 #===================================================================================================
 # Scripting

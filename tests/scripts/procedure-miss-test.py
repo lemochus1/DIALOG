@@ -1,5 +1,6 @@
 from define.processes import *
 from define.arguments import *
+from define.xmlelements import *
 
 from shared.running import *
 from shared.evaluating import *
@@ -10,12 +11,12 @@ from shared.evaluating import *
 
 # Test
 MESSAGE_SIZE        = 0
-PAUSE_BETWEEN_CALLS = 200
+PAUSE_BETWEEN_CALLS = 1000
 CALL_COUNT          = 20
 
 # Run
 CYCLE_COUNT    = getArgumentValue(CYCLE_COUNT_KEY, 1)
-CYCLE_DURATION = getArgumentValue(CYCLE_DURATION_KEY, 10)
+CYCLE_DURATION = getArgumentValue(CYCLE_DURATION_KEY, 5000)
 
 #===================================================================================================
 # Tokens
@@ -36,16 +37,12 @@ class ProcedureMissEvaluator(TestEvaluator):
         pass
 
     def setupProcessResults(self):
-        pass
+        self.control_server_result.addControlledMessage(NOT_REGISTERED)
+        self.control_server_result.addIgnoredMessage(NOT_REGISTERED)
 
     def evaluate(self):
-        if self.noErrorOccured():
-            self.checkAllUnexpectedMessages()
-            handler = self.test_process_results[PROCEDURE_PROVIDER][0]
-            if self.hasRegisteredSomething(handler):
-                sender = self.test_process_results[PROCEDURE_CALLER][0]
-                return self.areConsistent(sender, handler) and self.areConsistent(handler, sender)
-        return False
+        self.checkAllUnexpectedMessages()
+        return UNAVAILABLE_TAG in self.test_process_results[PROCEDURE_CALLER][0].api_error_messages
 
 #===================================================================================================
 # Scripting

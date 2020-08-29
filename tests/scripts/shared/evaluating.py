@@ -33,6 +33,7 @@ class TestProcessResult:
         self.api_registered_messages = dict()
         self.api_requested_messages  = dict()
         self.api_received_messages   = dict()
+        self.api_error_messages      = dict()
 
         self.internal_standard_messages = list()
         self.internal_ignored_messages  = list()
@@ -46,6 +47,7 @@ class TestProcessResult:
         self.registered_counter = 0
         self.requested_counter  = 0
         self.received_counter   = 0
+        self.errors_counter     = 0
 
         self.connected_control_server = False
 
@@ -99,6 +101,10 @@ class TestProcessResult:
             self.received_counter += 1
             placeDictToDict(self.api_received_messages, type)
             placeToDictOfLists(self.api_received_messages[type], name, message)
+        elif action == ERROR_TAG:
+            self.errors_counter += 1
+            placeDictToDict(self.api_error_messages, type)
+            placeToDictOfLists(self.api_error_messages[type], name, message)
         else:
             self.unknown_messages.insert(0, line)
             self.api_message_counter -= 1
@@ -169,7 +175,7 @@ class TestEvaluator:
         return True
 
     def checkErrorOccurred(self, process):
-        if process.internal_error_messages:
+        if process.errors_counter or process.internal_error_messages:
             messages = [ERROR_OCCURED_FORMAT_MESSAGE.format(process.process_name)]
             for message in process.internal_error_messages:
                 messages.append(TAB + message)

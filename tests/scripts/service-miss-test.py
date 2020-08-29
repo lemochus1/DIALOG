@@ -14,7 +14,7 @@ SERVICE_NAME = "Service"
 
 # Run
 CYCLE_COUNT    = getArgumentValue(CYCLE_COUNT_KEY, 1)
-CYCLE_DURATION = getArgumentValue(CYCLE_DURATION_KEY, 10000)
+CYCLE_DURATION = getArgumentValue(CYCLE_DURATION_KEY, 3000)
 
 #===================================================================================================
 # Evaluation
@@ -25,32 +25,14 @@ class ServiceMissEvaluator(TestEvaluator):
         pass
 
     def setupProcessResults(self):
-        self.control_server_result.addStandardMessage(INFO_ABOUT_SERVICE_MESSAGE)
-        self.control_server_result.addStandardMessage(SUBSCRIBED_MESSAGE)
+        self.control_server_result.addIgnoredMessage(NO_SENDER)
 
     def evaluate(self):
-        if self.noErrorOccured():
-            self.checkAllUnexpectedMessages()
-        return False
-
-    def wasServiceDataDelivered(self, provider, subscribers):
-        if not isinstance(subscribers, list):
-            subscribers = [subscribers]
-        sent_messages = provider.api_sent_messages[SERVICE_DATA_TAG][SERVICE_NAME]
-
-        for subscriber in subscribers:
-            if subscriber.requested_counter is not 1:
-                self.logger.logAndPrint("Service was not subscribed by all subscribers.")
-                return False
-            if SERVICE_DATA_TAG not in subscriber.api_received_messages:
-                self.logger.logAndPrint("No service data was received by a subscriber.")
-                return False
-            received_messages = subscriber.api_received_messages[SERVICE_DATA_TAG][SERVICE_NAME]
-            for index, sent in enumerate(sent_messages):
-                if index < len(received_messages):
-                    if not sent == received_messages[index]:
-                        self.logger.logAndPrint("Subscribed data was not delivered right.")
-                        return False
+        self.checkAllUnexpectedMessages()
+        error_messages      = self.test_process_results[SERVICE_SUBSCRIBER][0].api_error_messages
+        if not UNAVAILABLE_TAG in error_messages:
+            self.logger.logAndPrint("Missing unavailable error message.")
+            return False
         return True
 
 #===================================================================================================

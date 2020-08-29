@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<process name="procedure-handler">
+<process name="procedure-provider">
     <control-server address="127.0.0.1" port="8081"/>
     <register>
         <procedure duration="{DURATION}">Procedure</procedure>

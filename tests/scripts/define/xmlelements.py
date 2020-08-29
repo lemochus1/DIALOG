@@ -7,6 +7,8 @@ SENT_TAG      = "sent"
 RECEIVED_TAG  = "received"
 REQUESTED_TAG = "requested"
 REGISTRED_TAG = "registered"
+ERROR_TAG     = "error"
+UNAVAILABLE_TAG = "unavailable"
 
 SERVICE_DATA_TAG  = "service-data"
 

@@ -12,10 +12,14 @@ public:
     explicit Procedure(QString procedureNameInit, QObject *parent = 0);
     ~Procedure();
     QString procedureName;
-    //refactoring needed
     QList<Process*> senders;
     bool addSender(Process* senderProcess);
     void removeSender(Process* senderProcess);
+    /// Uniformly distributes calls.
+    Process* getNextSender();
+
+private:
+    int lastSenderIndex;
 };
 
 #endif // PROCEDURE_H
